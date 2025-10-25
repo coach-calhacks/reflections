@@ -56,35 +56,6 @@ const App = () => {
     }
   };
 
-  const getStepTitle = () => {
-    switch (setupStep) {
-      case "mcp":
-        return "Connecting to MCP Server";
-      case "research":
-        return "Running Deep Research";
-      case "voice":
-        return "Setting up Voice Agent";
-      case "complete":
-        return "Setup Complete!";
-      default:
-        return "";
-    }
-  };
-
-  const getStepDescription = () => {
-    switch (setupStep) {
-      case "mcp":
-        return "Establishing connection to Model Context Protocol...";
-      case "research":
-        return "Analyzing your data and building knowledge base...";
-      case "voice":
-        return "Initializing voice recognition and response system...";
-      case "complete":
-        return "You're all set! Ready to start your session.";
-      default:
-        return "";
-    }
-  };
 
   // If on recording settings page, show that component
   if (currentPage === "recording") {
@@ -113,24 +84,17 @@ const App = () => {
     // Show setup progress before showing voice chat
     if (setupStep !== "complete") {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
-          <div className="w-full max-w-md space-y-6">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-2">{getStepTitle()}</h1>
-              <p className="text-gray-600 text-sm">{getStepDescription()}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Progress value={getProgressValue()} className="h-2" />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Step {getProgressValue() / 25} of 4</span>
-                <span>{getProgressValue()}%</span>
-              </div>
-            </div>
+        <div className="flex flex-col items-center justify-center min-h-screen relative">
+          {/* Progress bar at top */}
+          <div className="absolute top-0 left-0 right-0 p-4">
+            <Progress value={getProgressValue()} className="h-2" />
+          </div>
 
+          {/* Content */}
+          <div className="w-full max-w-md space-y-6 p-4">
             {/* Show research demo during research step */}
             {setupStep === "research" && (
-              <div className="mt-8">
+              <div>
                 <ResearchDemo
                   autoStart={true}
                   userInfo={userInfo}
@@ -144,7 +108,7 @@ const App = () => {
 
             {/* Show continue button for other steps */}
             {setupStep !== "research" && (
-              <div className="space-y-2 mt-8">
+              <div className="space-y-2">
                 <Button 
                   onClick={() => {
                     if (setupStep === "mcp") setSetupStep("research");
@@ -202,13 +166,6 @@ const App = () => {
           className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
         >
           Continue as Caden
-        </Button>
-        <Button 
-          onClick={() => setCurrentPage("research")}
-          variant="outline"
-          className="rounded-full text-xs"
-        >
-          Try Research
         </Button>
       </div>
     </div>

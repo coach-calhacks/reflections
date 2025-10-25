@@ -55,10 +55,13 @@ export function ResearchDemo({
     };
   }, []);
 
-  // Auto-scroll to bottom when new events arrive
+  // Auto-scroll to bottom when new events arrive with smooth animation
   useEffect(() => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [events]);
 
@@ -130,15 +133,22 @@ export function ResearchDemo({
   // ChatGPT-style vertical carousel view
   if (showOnlyCurrentEvent) {
     return (
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full max-w-2xl mx-auto relative perspective-[1000px]">
+        {/* Top fade gradient overlay */}
+        <div className="absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
+        
         <div 
           ref={scrollContainerRef}
-          className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
+          className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          style={{ 
+            transformStyle: 'preserve-3d',
+            transform: 'rotateX(2deg)'
+          }}
         >
           {processedEvents.length === 0 && isResearching && (
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <Brain className="h-5 w-5 text-purple-600 animate-pulse flex-shrink-0" />
+                <Brain className="h-5 w-5 text-foreground animate-pulse flex-shrink-0" />
                 <span className="text-base font-medium bg-gradient-to-r from-foreground via-foreground/60 to-foreground bg-[length:200%_100%] animate-shimmer bg-clip-text text-transparent">
                   Thinking...
                 </span>
@@ -158,9 +168,9 @@ export function ResearchDemo({
           {finalResult && (
             <Card className="p-6 border-green-200 bg-green-50 dark:bg-green-950/20">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
+                <CheckCircle2 className="h-6 w-6 text-foreground mt-1 flex-shrink-0" />
                 <div className="flex-1 space-y-3">
-                  <h3 className="font-semibold text-lg text-green-600">Research Complete</h3>
+                  <h3 className="font-semibold text-lg text-foreground">Research Complete</h3>
                   {finalResult.costDollars && (
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>Cost: ${finalResult.costDollars.total.toFixed(4)}</p>
@@ -247,9 +257,9 @@ export function ResearchDemo({
           {finalResult && (
             <Card className="p-6 border-green-200 bg-green-50 dark:bg-green-950/20">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
+                <CheckCircle2 className="h-6 w-6 text-foreground mt-1 flex-shrink-0" />
                 <div className="flex-1 space-y-3">
-                  <h3 className="font-semibold text-lg text-green-600">Research Complete</h3>
+                  <h3 className="font-semibold text-lg text-foreground">Research Complete</h3>
                   {finalResult.costDollars && (
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>Cost: ${finalResult.costDollars.total.toFixed(4)}</p>
@@ -288,25 +298,25 @@ function EventCarouselCard({
   const getEventIcon = () => {
     switch (event.eventType) {
       case 'research-definition':
-        return <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />;
+        return <FileText className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'research-output':
         return event.output.outputType === 'completed' 
-          ? <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-          : <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />;
+          ? <CheckCircle2 className="h-5 w-5 text-foreground flex-shrink-0" />
+          : <XCircle className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'plan-definition':
-        return <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />;
+        return <Brain className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'plan-operation':
         return getOperationIcon(event.data.type);
       case 'plan-output':
-        return <ListChecks className="h-5 w-5 text-purple-600 flex-shrink-0" />;
+        return <ListChecks className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'task-definition':
-        return <ListChecks className="h-5 w-5 text-amber-600 flex-shrink-0" />;
+        return <ListChecks className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'task-operation':
         return getOperationIcon(event.data.type);
       case 'task-output':
-        return <Lightbulb className="h-5 w-5 text-amber-600 flex-shrink-0" />;
+        return <Lightbulb className="h-5 w-5 text-foreground flex-shrink-0" />;
       default:
-        return <FileText className="h-5 w-5 text-gray-600 flex-shrink-0" />;
+        return <FileText className="h-5 w-5 text-foreground flex-shrink-0" />;
     }
   };
 
@@ -314,18 +324,18 @@ function EventCarouselCard({
     switch (type) {
       case 'think': 
         return isProcessing 
-          ? <Brain className="h-5 w-5 text-purple-600 flex-shrink-0 animate-pulse" />
-          : <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />;
+          ? <Brain className="h-5 w-5 text-foreground flex-shrink-0 animate-pulse" />
+          : <Brain className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'search': 
         return isProcessing
-          ? <Search className="h-5 w-5 text-blue-600 flex-shrink-0 animate-pulse" />
-          : <Search className="h-5 w-5 text-blue-600 flex-shrink-0" />;
+          ? <Search className="h-5 w-5 text-foreground flex-shrink-0 animate-pulse" />
+          : <Search className="h-5 w-5 text-foreground flex-shrink-0" />;
       case 'crawl': 
         return isProcessing
-          ? <FileText className="h-5 w-5 text-orange-600 flex-shrink-0 animate-pulse" />
-          : <FileText className="h-5 w-5 text-orange-600 flex-shrink-0" />;
+          ? <FileText className="h-5 w-5 text-foreground flex-shrink-0 animate-pulse" />
+          : <FileText className="h-5 w-5 text-foreground flex-shrink-0" />;
       default: 
-        return <FileText className="h-5 w-5 text-gray-600 flex-shrink-0" />;
+        return <FileText className="h-5 w-5 text-foreground flex-shrink-0" />;
     }
   };
 
