@@ -119,7 +119,7 @@ export class GoogleAuth {
       });
 
       // Handle navigation (for some OAuth flows)
-      authWindow.webContents.on("did-navigate", (event, url) => {
+      authWindow.webContents.on("did-navigate", (_event, url) => {
         console.log("[GoogleAuth] did-navigate event:", url);
         if (url.startsWith(this.config.redirectUri)) {
           console.log("[GoogleAuth] Handling callback from did-navigate");
@@ -128,7 +128,7 @@ export class GoogleAuth {
       });
 
       // Handle the case where the page fails to load (ERR_CONNECTION_REFUSED)
-      authWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+      authWindow.webContents.on("did-fail-load", (_event, _errorCode, errorDescription, validatedURL) => {
         console.log("[GoogleAuth] did-fail-load event:", validatedURL, "Error:", errorDescription);
         // Check if this is our redirect URL with the auth code
         if (validatedURL.startsWith(this.config.redirectUri)) {

@@ -14,6 +14,9 @@ console.log("  GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "✓ Loaded" :
 console.log("  GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✓ Loaded" : "✗ Missing");
 console.log("  GOOGLE_REDIRECT_URI:", process.env.GOOGLE_REDIRECT_URI || "Using default: http://localhost");
 console.log("  ELEVENLABS_AGENT_ID:", process.env.ELEVENLABS_AGENT_ID ? "✓ Loaded" : "✗ Missing");
+console.log("Supabase Config Status:");
+console.log("  SUPABASE_URL:", process.env.SUPABASE_URL ? "✓ Loaded" : "✗ Missing");
+console.log("  SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "✓ Loaded" : "✗ Missing");
 
 export default defineConfig({
   main: {
@@ -33,6 +36,12 @@ export default defineConfig({
       ),
       "process.env.GOOGLE_REDIRECT_URI": JSON.stringify(
         process.env.GOOGLE_REDIRECT_URI || "http://localhost"
+      ),
+      "process.env.SUPABASE_URL": JSON.stringify(
+        process.env.SUPABASE_URL
+      ),
+      "process.env.SUPABASE_ANON_KEY": JSON.stringify(
+        process.env.SUPABASE_ANON_KEY
       ),
     },
   },

@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
 import { GoogleGenAI, Type, FunctionCallingConfigMode } from "@google/genai";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   GetVersionsFn,
   StartScreenCaptureFn,
@@ -33,6 +34,25 @@ try {
 } catch (error) {
   console.error("Failed to initialize Gemini AI client:", error);
 }
+
+// Initialize Supabase client
+let supabase: SupabaseClient | null = null;
+try {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+    console.log("Supabase client initialized successfully");
+  } else {
+    console.warn("SUPABASE_URL or SUPABASE_ANON_KEY not found. Stats tracking will be skipped.");
+    console.warn("Please set your Supabase credentials in the .env file to enable stats tracking.");
+  }
+} catch (error) {
+  console.error("Failed to initialize Supabase client:", error);
+}
+
+// Store logged in user's email
+let userEmail: string | null = null;
 
 // Thie file stores functions used for the front-end
 // to communicate with the main process directly
@@ -121,7 +141,7 @@ const checkScreenCapturePermissions = async (): Promise<boolean> => {
 const checkUserFocusTool = {
   functionDeclarations: [{
     name: "check_user_focus",
-    description: "Determines if the user is locked in (focused on productive applications) or distracted",
+    description: "Determines if the user is locked in (focused on productive applications) or distracted, and whether they are working on the same task as before",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -132,11 +152,46 @@ const checkUserFocusTool = {
         user_activity_description: {
           type: Type.STRING,
           description: "Brief description of what the user is currently doing (e.g., 'coding in VS Code', 'browsing social media', 'watching YouTube')"
+        },
+        same_task: {
+          type: Type.BOOLEAN,
+          description: "True if the current activity is the same task as the previous activity, False if it's a different task or context has changed"
         }
       },
-      required: ["is_locked_in", "user_activity_description"]
+      required: ["is_locked_in", "user_activity_description", "same_task"]
     }
   }]
+};
+
+// Helper function to get most recent activity from Supabase
+const getMostRecentActivity = async (email: string): Promise<{ description: string; seq_time: number } | null> => {
+  if (!supabase) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('stats')
+      .select('description, seq_time')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      // If no rows found, that's okay (user's first activity)
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error('Error fetching most recent activity:', error);
+      return null;
+    }
+
+    return data ? { description: data.description, seq_time: data.seq_time || 0 } : null;
+  } catch (error) {
+    console.error('Failed to fetch most recent activity:', error);
+    return null;
+  }
 };
 
 // Analyze screenshot with Gemini AI
@@ -147,12 +202,31 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   }
 
   try {
+    // Fetch most recent activity if user is logged in
+    let previousActivityData: { description: string; seq_time: number } | null = null;
+    if (userEmail) {
+      previousActivityData = await getMostRecentActivity(userEmail);
+      if (previousActivityData) {
+        console.log(`Previous activity: ${previousActivityData.description}`);
+        console.log(`Previous seq_time: ${previousActivityData.seq_time}`);
+      }
+    }
+
     // Read the image file and convert to base64
     const imageBuffer = fs.readFileSync(filepath);
     const base64Image = imageBuffer.toString("base64");
 
     // Prepare the prompt and image
-    const prompt = "Analyze this screenshot and determine if the user is 'locked in' (focused on productive work like coding, writing, professional tools, learning, etc.) or distracted (social media, entertainment, gaming, shopping, etc.). Call the check_user_focus function with your assessment.";
+    let prompt = "Analyze this screenshot and determine if the user is 'locked in' (focused on productive work like coding, writing, professional tools, learning, etc.) or distracted (social media, entertainment, gaming, shopping, etc.).";
+    
+    if (previousActivityData) {
+      prompt += ` The user's previous activity was: "${previousActivityData.description}". Determine if the current activity is the same task or a different task.`;
+    } else {
+      prompt += " This is the first activity being tracked.";
+    }
+    
+    prompt += " Call the check_user_focus function with your assessment.";
+
     const imagePart = {
       inlineData: {
         data: base64Image,
@@ -176,14 +250,58 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
     if (functionCalls && functionCalls.length > 0) {
       const functionCall = functionCalls[0];
       if (functionCall.name === "check_user_focus") {
-        const { is_locked_in, user_activity_description } = functionCall.args as { 
+        const { is_locked_in, user_activity_description, same_task } = functionCall.args as { 
           is_locked_in: boolean;
           user_activity_description: string;
+          same_task: boolean;
         };
         
         // Output the results to terminal
         console.log(`Is locked in: ${is_locked_in}`);
         console.log(`User activity: ${user_activity_description}`);
+        console.log(`Same task: ${same_task}`);
+        
+        // Insert stats into Supabase if user is logged in
+        if (userEmail && supabase) {
+          try {
+            // Calculate seq_time based on whether it's the same task
+            let seqTime: number;
+            if (same_task && previousActivityData) {
+              // Same task: add current interval to previous seq_time
+              seqTime = previousActivityData.seq_time + captureSettings.interval;
+              console.log(`Same task - incrementing seq_time: ${previousActivityData.seq_time} + ${captureSettings.interval} = ${seqTime}`);
+            } else {
+              // Different task or first activity: restart counter
+              seqTime = captureSettings.interval;
+              console.log(`New task - starting seq_time: ${seqTime}`);
+            }
+
+            const { error: insertError } = await supabase
+              .from('stats')
+              .insert({
+                email: userEmail,
+                description: user_activity_description,
+                on_goal: is_locked_in,
+                seconds: captureSettings.interval,
+                seq_time: seqTime
+              });
+
+            if (insertError) {
+              console.error('Error inserting stats:', insertError);
+            } else {
+              console.log('Stats inserted successfully');
+            }
+          } catch (statsError) {
+            console.error('Failed to insert stats:', statsError);
+          }
+        } else {
+          if (!userEmail) {
+            console.warn('User not logged in, skipping stats insertion');
+          }
+          if (!supabase) {
+            console.warn('Supabase not initialized, skipping stats insertion');
+          }
+        }
         
         // Only send notification if user is NOT locked in
         if (!is_locked_in) {
@@ -382,5 +500,13 @@ export const initializeScreenCapture = (): void => {
 
 // Google OAuth
 export const signInWithGoogle: SignInWithGoogleFn = async () => {
-  return googleAuthSignIn();
+  const result = await googleAuthSignIn();
+  
+  // Store user email if sign-in was successful
+  if (result.success && result.userInfo?.email) {
+    userEmail = result.userInfo.email;
+    console.log(`User email stored: ${userEmail}`);
+  }
+  
+  return result;
 };
