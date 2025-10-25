@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import googleIcon from "./assets/google_icon.svg";
+import RecordingSettings from "@/components/RecordingSettings";
 
 const App = () => {
+  const [currentPage, setCurrentPage] = useState<"login" | "recording">("login");
+
+  // If on recording settings page, show that component
+  if (currentPage === "recording") {
+    return <RecordingSettings />;
+  }
+
+  // Otherwise show login page
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-0">
       <div className="text-center mb-32">
@@ -12,7 +22,12 @@ const App = () => {
         <img src={googleIcon} alt="Google" className="w-4 h-4" />
         Continue with Google
       </Button>
-      <Button className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white">Continue as Caden</Button>
+      <Button 
+        onClick={() => setCurrentPage("recording")}
+        className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+      >
+        Continue as Caden
+      </Button>
     </div>
   );
 };

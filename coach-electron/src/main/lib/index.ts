@@ -3,6 +3,8 @@ import { desktopCapturer, systemPreferences } from "electron";
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 import {
   GetVersionsFn,
   StartScreenCaptureFn,
@@ -11,6 +13,24 @@ import {
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
 } from "@shared/types";
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, "../../.env") });
+
+// Initialize Gemini AI client
+let genAI: GoogleGenAI | null = null;
+try {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey && apiKey !== "your_api_key_here") {
+    genAI = new GoogleGenAI({ apiKey });
+    console.log("Gemini AI client initialized successfully");
+  } else {
+    console.warn("GEMINI_API_KEY not found or not set. Screenshot analysis will be skipped.");
+    console.warn("Please set your API key in the .env file to enable Gemini analysis.");
+  }
+} catch (error) {
+  console.error("Failed to initialize Gemini AI client:", error);
+}
 
 // Thie file stores functions used for the front-end
 // to communicate with the main process directly
@@ -95,6 +115,55 @@ const checkScreenCapturePermissions = async (): Promise<boolean> => {
   return true;
 };
 
+// Analyze screenshot with Gemini AI
+const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
+  if (!genAI) {
+    console.log("Gemini AI not initialized. Skipping screenshot analysis.");
+    return;
+  }
+
+  try {
+    console.log("\n🔍 Analyzing screenshot with Gemini AI...");
+    
+    // Read the image file and convert to base64
+    const imageBuffer = fs.readFileSync(filepath);
+    const base64Image = imageBuffer.toString("base64");
+
+    // Prepare the prompt and image
+    const prompt = "What is this screenshot about?";
+    const imagePart = {
+      inlineData: {
+        data: base64Image,
+        mimeType: "image/png",
+      },
+    };
+
+    // Generate content using Gemini
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: [prompt, imagePart],
+    });
+    
+    const text = result.text;
+
+    // Log the analysis result
+    console.log("\n" + "=".repeat(80));
+    console.log("📸 SCREENSHOT ANALYSIS");
+    console.log("=".repeat(80));
+    console.log(`File: ${path.basename(filepath)}`);
+    console.log(`Time: ${new Date().toLocaleString()}`);
+    console.log("-".repeat(80));
+    console.log(text);
+    console.log("=".repeat(80) + "\n");
+
+  } catch (error) {
+    console.error("Failed to analyze screenshot with Gemini:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+    }
+  }
+};
+
 // Capture a single screenshot
 const captureScreenshot = async (): Promise<void> => {
   try {
@@ -122,8 +191,21 @@ const captureScreenshot = async (): Promise<void> => {
     const size = thumbnail.getSize();
     console.log(`Screenshot size: ${size.width}x${size.height}`);
 
+    // Check if thumbnail is empty
+    if (size.width === 0 || size.height === 0) {
+      console.warn("Screenshot is empty (0x0), skipping...");
+      return;
+    }
+
     // Convert to PNG buffer
     const imageBuffer = thumbnail.toPNG();
+
+    // Additional check: verify the image buffer has reasonable size
+    // Empty/blank screenshots are typically very small (< 1KB)
+    if (imageBuffer.length < 1000) {
+      console.warn(`Screenshot buffer too small (${imageBuffer.length} bytes), likely empty. Skipping...`);
+      return;
+    }
 
     // Generate filename with timestamp
     const now = new Date();
@@ -140,6 +222,9 @@ const captureScreenshot = async (): Promise<void> => {
     captureSettings.lastCaptureTime = now.toISOString();
     
     console.log(`Screenshot saved: ${filepath}`);
+
+    // Analyze screenshot with Gemini AI
+    await analyzeScreenshotWithGemini(filepath);
   } catch (error) {
     console.error("Failed to capture screenshot:", error);
     if (error instanceof Error) {
