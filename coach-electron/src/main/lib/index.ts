@@ -1,10 +1,10 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { desktopCapturer, systemPreferences } from "electron";
+import { desktopCapturer, systemPreferences, Notification } from "electron";
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, FunctionCallingConfigMode } from "@google/genai";
 import {
   GetVersionsFn,
   StartScreenCaptureFn,
@@ -117,6 +117,24 @@ const checkScreenCapturePermissions = async (): Promise<boolean> => {
   return true;
 };
 
+// Define the function declaration tool for Gemini
+const checkUserFocusTool = {
+  functionDeclarations: [{
+    name: "check_user_focus",
+    description: "Determines if the user is locked in (focused on productive applications) or distracted",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        is_locked_in: {
+          type: Type.BOOLEAN,
+          description: "True if user is on productive/work apps, False if on distracting apps"
+        }
+      },
+      required: ["is_locked_in"]
+    }
+  }]
+};
+
 // Analyze screenshot with Gemini AI
 const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   if (!genAI) {
@@ -125,14 +143,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   }
 
   try {
-    console.log("\n🔍 Analyzing screenshot with Gemini AI...");
-    
     // Read the image file and convert to base64
     const imageBuffer = fs.readFileSync(filepath);
     const base64Image = imageBuffer.toString("base64");
 
     // Prepare the prompt and image
-    const prompt = "What is this screenshot about?";
+    const prompt = "Analyze this screenshot and determine if the user is 'locked in' (focused on productive work like coding, writing, professional tools, learning, etc.) or distracted (social media, entertainment, gaming, shopping, etc.). Call the check_user_focus function with your assessment.";
     const imagePart = {
       inlineData: {
         data: base64Image,
@@ -140,23 +156,36 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
       },
     };
 
-    // Generate content using Gemini
+    // Generate content using Gemini with function calling
     const result = await genAI.models.generateContent({
       model: "gemini-2.0-flash-exp",
       contents: [prompt, imagePart],
+      config: {
+        tools: [checkUserFocusTool],
+        toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
+      },
     });
-    
-    const text = result.text;
 
-    // Log the analysis result
-    console.log("\n" + "=".repeat(80));
-    console.log("📸 SCREENSHOT ANALYSIS");
-    console.log("=".repeat(80));
-    console.log(`File: ${path.basename(filepath)}`);
-    console.log(`Time: ${new Date().toLocaleString()}`);
-    console.log("-".repeat(80));
-    console.log(text);
-    console.log("=".repeat(80) + "\n");
+    // Check if the model made a function call
+    const functionCalls = result.functionCalls;
+    
+    if (functionCalls && functionCalls.length > 0) {
+      const functionCall = functionCalls[0];
+      if (functionCall.name === "check_user_focus") {
+        const { is_locked_in } = functionCall.args as { is_locked_in: boolean };
+        
+        // Output the boolean result to terminal
+        console.log(`Is locked in: ${is_locked_in}`);
+        
+        // Only send notification if user is NOT locked in
+        if (!is_locked_in) {
+          new Notification({
+            title: "Focus Alert",
+            body: "You are not locked in!"
+          }).show();
+        }
+      }
+    }
 
   } catch (error) {
     console.error("Failed to analyze screenshot with Gemini:", error);
