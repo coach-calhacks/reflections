@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply flex items-center justify-center min-h-dvh text-foreground bg-gradient-to-tr from-primary/30 to-background;
+    @apply flex items-center justify-center min-h-dvh text-foreground bg-white;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
