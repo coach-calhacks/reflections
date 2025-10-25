@@ -13,6 +13,7 @@ console.log("Google OAuth Config Status:");
 console.log("  GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "✓ Loaded" : "✗ Missing");
 console.log("  GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✓ Loaded" : "✗ Missing");
 console.log("  GOOGLE_REDIRECT_URI:", process.env.GOOGLE_REDIRECT_URI || "Using default: http://localhost");
+console.log("  ELEVENLABS_AGENT_ID:", process.env.ELEVENLABS_AGENT_ID ? "✓ Loaded" : "✗ Missing");
 
 export default defineConfig({
   main: {
@@ -47,6 +48,11 @@ export default defineConfig({
         "@/utils": resolve("src/renderer/src/utils"),
         "@/hooks": resolve("src/renderer/src/hooks"),
       },
+    },
+    define: {
+      "import.meta.env.VITE_ELEVENLABS_AGENT_ID": JSON.stringify(
+        process.env.ELEVENLABS_AGENT_ID
+      ),
     },
     plugins: [react()],
   },

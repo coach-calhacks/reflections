@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import googleIcon from "./assets/google_icon.svg";
 import RecordingSettings from "@/components/RecordingSettings";
+import VoiceChat from "@/components/VoiceChat";
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -42,8 +43,8 @@ const App = () => {
 
   if (userInfo) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
+        <div className="text-center mb-4">
           <h1 className="text-3xl font-bold mb-2">Welcome, {userInfo.name}!</h1>
           <p className="text-gray-600">{userInfo.email}</p>
           {userInfo.picture && (
@@ -53,6 +54,9 @@ const App = () => {
               className="w-20 h-20 rounded-full mx-auto mt-4"
             />
           )}
+        </div>
+        <div className="w-full max-w-md">
+          <VoiceChat />
         </div>
       </div>
     );
