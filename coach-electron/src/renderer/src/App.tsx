@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import googleIcon from "./assets/google_icon.svg";
 import RecordingSettings from "@/components/RecordingSettings";
 import VoiceChat from "@/components/VoiceChat";
+import { ResearchDemo } from "@/components/ResearchDemo";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -11,7 +12,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<"login" | "recording">("login");
+  const [currentPage, setCurrentPage] = useState<"login" | "recording" | "research">("login");
   const [setupStep, setSetupStep] = useState<SetupStep>("mcp");
 
   const handleGoogleSignIn = async () => {
@@ -90,6 +91,24 @@ const App = () => {
     return <RecordingSettings />;
   }
 
+  // If on research page, show the research demo
+  if (currentPage === "research") {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="p-4">
+          <Button
+            onClick={() => setCurrentPage("login")}
+            variant="outline"
+            className="mb-4"
+          >
+            ← Back
+          </Button>
+        </div>
+        <ResearchDemo />
+      </div>
+    );
+  }
+
   if (userInfo) {
     // Show setup progress before showing voice chat
     if (setupStep !== "complete") {
@@ -109,18 +128,34 @@ const App = () => {
               </div>
             </div>
 
-            <div className="space-y-2 mt-8">
-              <Button 
-                onClick={() => {
-                  if (setupStep === "mcp") setSetupStep("research");
-                  else if (setupStep === "research") setSetupStep("voice");
-                  else if (setupStep === "voice") setSetupStep("complete");
-                }}
-                className="w-full"
-              >
-                Continue
-              </Button>
-            </div>
+            {/* Show research demo during research step */}
+            {setupStep === "research" && (
+              <div className="mt-8">
+                <ResearchDemo
+                  autoStart={true}
+                  userInfo={userInfo}
+                  showOnlyCurrentEvent={true}
+                  onComplete={() => {
+                    setSetupStep("voice");
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Show continue button for other steps */}
+            {setupStep !== "research" && (
+              <div className="space-y-2 mt-8">
+                <Button 
+                  onClick={() => {
+                    if (setupStep === "mcp") setSetupStep("research");
+                    else if (setupStep === "voice") setSetupStep("complete");
+                  }}
+                  className="w-full"
+                >
+                  Continue
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -128,6 +163,15 @@ const App = () => {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
+        <div className="absolute top-4 right-4">
+          <Button
+            onClick={() => setCurrentPage("research")}
+            variant="outline"
+            size="sm"
+          >
+            Research Demo
+          </Button>
+        </div>
         
         <div className="w-full max-w-md">
           <VoiceChat userInfo={userInfo} />
@@ -152,12 +196,21 @@ const App = () => {
       {error && (
         <p className="text-red-500 text-sm mt-4 max-w-md text-center">{error}</p>
       )}
-      <Button 
-        onClick={() => setCurrentPage("recording")}
-        className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white mt-2"
-      >
-        Continue as Caden
-      </Button>
+      <div className="flex gap-2 mt-2">
+        <Button 
+          onClick={() => setCurrentPage("recording")}
+          className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+        >
+          Continue as Caden
+        </Button>
+        <Button 
+          onClick={() => setCurrentPage("research")}
+          variant="outline"
+          className="rounded-full text-xs"
+        >
+          Try Research
+        </Button>
+      </div>
     </div>
   );
 };

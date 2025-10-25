@@ -32,3 +32,158 @@ export interface GoogleAuthResult {
 }
 
 export type SignInWithGoogleFn = () => Promise<GoogleAuthResult>;
+
+// Web Research types (Exa Research API)
+export interface ResearchOptions {
+  instructions: string;
+  model?: 'exa-research-fast' | 'exa-research' | 'exa-research-pro';
+  outputSchema?: Record<string, any>;
+}
+
+// Event types for streaming research
+export type ResearchEventType = 
+  | 'research-definition'
+  | 'research-output'
+  | 'plan-definition'
+  | 'plan-operation'
+  | 'plan-output'
+  | 'task-definition'
+  | 'task-operation'
+  | 'task-output';
+
+export interface ResearchDefinitionEvent {
+  eventType: 'research-definition';
+  instructions: string;
+  outputSchema?: Record<string, any>;
+  createdAt: number;
+  researchId: string;
+}
+
+export interface ResearchOutputEvent {
+  eventType: 'research-output';
+  output: {
+    outputType: 'completed' | 'failed';
+    costDollars?: {
+      total: number;
+      numSearches: number;
+      numPages: number;
+      reasoningTokens: number;
+    };
+    content?: string;
+    parsed?: Record<string, any>;
+    error?: string;
+  };
+  createdAt: number;
+  researchId: string;
+}
+
+export interface PlanDefinitionEvent {
+  eventType: 'plan-definition';
+  planId: string;
+  createdAt: number;
+  researchId: string;
+}
+
+export interface PlanOperationEvent {
+  eventType: 'plan-operation';
+  planId: string;
+  operationId: string;
+  data: {
+    type: 'think' | 'search' | 'crawl';
+    content?: string;
+    searchType?: 'neural' | 'keyword' | 'auto' | 'fast';
+    goal?: string;
+    query?: string;
+    results?: Array<{ url: string }>;
+    result?: { url: string };
+    pageTokens?: number;
+  };
+  createdAt: number;
+  researchId: string;
+}
+
+export interface PlanOutputEvent {
+  eventType: 'plan-output';
+  planId: string;
+  output: {
+    outputType: 'tasks' | 'stop';
+    reasoning: string;
+    tasksInstructions?: string[];
+  };
+  createdAt: number;
+  researchId: string;
+}
+
+export interface TaskDefinitionEvent {
+  eventType: 'task-definition';
+  planId: string;
+  taskId: string;
+  instructions: string;
+  createdAt: number;
+  researchId: string;
+}
+
+export interface TaskOperationEvent {
+  eventType: 'task-operation';
+  planId: string;
+  taskId: string;
+  operationId: string;
+  data: {
+    type: 'think' | 'search' | 'crawl';
+    content?: string;
+    searchType?: 'neural' | 'keyword' | 'auto' | 'fast';
+    goal?: string;
+    query?: string;
+    results?: Array<{ url: string }>;
+    result?: { url: string };
+    pageTokens?: number;
+  };
+  createdAt: number;
+  researchId: string;
+}
+
+export interface TaskOutputEvent {
+  eventType: 'task-output';
+  planId: string;
+  taskId: string;
+  output: {
+    outputType: 'completed';
+    content: string;
+  };
+  createdAt: number;
+  researchId: string;
+}
+
+export type ResearchEvent =
+  | ResearchDefinitionEvent
+  | ResearchOutputEvent
+  | PlanDefinitionEvent
+  | PlanOperationEvent
+  | PlanOutputEvent
+  | TaskDefinitionEvent
+  | TaskOperationEvent
+  | TaskOutputEvent;
+
+export interface ResearchResponse {
+  researchId: string;
+  createdAt: number;
+  model: string;
+  instructions: string;
+  status: 'pending' | 'running' | 'completed' | 'canceled' | 'failed';
+  events?: ResearchEvent[];
+  output?: {
+    content: string;
+    parsed?: Record<string, any>;
+  };
+  costDollars?: {
+    total: number;
+    numSearches: number;
+    numPages: number;
+    reasoningTokens: number;
+  };
+  error?: string;
+  finishedAt?: number;
+}
+
+export type PerformDeepResearchFn = (options: ResearchOptions) => Promise<ResearchResponse>;
+export type OnResearchEventFn = (event: ResearchEvent) => void;

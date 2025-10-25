@@ -18,6 +18,19 @@ This Electron boilerplate enables developers to quickly build cross-platform app
 | **UI and Styling**        | [shadcn](https://ui.shadcn.com/), [Tailwind](https://tailwindcss.com/)                      |
 | **Testing**               | [Vitest](https://vitest.dev), [Testing Library](https://testing-library.com/)                 |
 
+## Features
+
+This boilerplate includes several powerful integrations:
+
+- **Screen Capture**: Automated screenshot capture with Gemini AI analysis for focus tracking
+- **Google OAuth**: Seamless Google sign-in integration
+- **Exa Research API**: Deep web research with real-time streaming events
+
+For detailed setup instructions, see:
+- [Gemini Setup Guide](./GEMINI_SETUP.md)
+- [Google OAuth Setup Guide](./GOOGLE_OAUTH_SETUP.md)
+- [Exa Research Setup Guide](./EXA_RESEARCH_SETUP.md)
+
 ## Quick Start
 
 ### Option 1 (Recommended): Use `npx electron-react-shadcn` to create a new project.

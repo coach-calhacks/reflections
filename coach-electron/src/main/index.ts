@@ -12,6 +12,7 @@ import {
   getScreenCaptureFolder,
   initializeScreenCapture,
   signInWithGoogle,
+  performDeepResearch,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -21,6 +22,7 @@ import {
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
   SignInWithGoogleFn,
+  PerformDeepResearchFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -118,6 +120,19 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "signInWithGoogle",
     (_, ...args: Parameters<SignInWithGoogleFn>) => signInWithGoogle(...args)
+  );
+
+  // Web Deep Research IPC event
+  ipcMain.handle(
+    "performDeepResearch",
+    async (event, ...args: Parameters<PerformDeepResearchFn>) => {
+      // Set up event callback to send events back to renderer
+      const onEvent = (researchEvent: any) => {
+        event.sender.send('research-event', researchEvent);
+      };
+      
+      return performDeepResearch(args[0], onEvent);
+    }
   );
 
   // Initialize screen capture (auto-start if previously enabled)

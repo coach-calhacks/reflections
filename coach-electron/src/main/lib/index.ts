@@ -376,3 +376,6 @@ export const initializeScreenCapture = (): void => {
 export const signInWithGoogle: SignInWithGoogleFn = async () => {
   return googleAuthSignIn();
 };
+
+// Web Deep Research
+export { performDeepResearch } from './webResearch';

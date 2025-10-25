@@ -6,6 +6,8 @@ import {
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
   SignInWithGoogleFn,
+  PerformDeepResearchFn,
+  OnResearchEventFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -20,6 +22,8 @@ declare global {
       setScreenCaptureInterval: SetScreenCaptureIntervalFn;
       getScreenCaptureFolder: GetScreenCaptureFolderFn;
       signInWithGoogle: SignInWithGoogleFn;
+      performDeepResearch: PerformDeepResearchFn;
+      onResearchEvent: (callback: OnResearchEventFn) => () => void;
     };
   }
 }
