@@ -510,3 +510,6 @@ export const signInWithGoogle: SignInWithGoogleFn = async () => {
   
   return result;
 };
+
+// Web Deep Research
+export { performDeepResearch } from './webResearch';

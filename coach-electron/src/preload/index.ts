@@ -8,6 +8,9 @@ import {
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
   SignInWithGoogleFn,
+  PerformDeepResearchFn,
+  OnResearchEventFn,
+  ResearchEvent,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -35,6 +38,16 @@ try {
       ipcRenderer.invoke("getScreenCaptureFolder", ...args),
     signInWithGoogle: (...args: Parameters<SignInWithGoogleFn>) =>
       ipcRenderer.invoke("signInWithGoogle", ...args),
+    performDeepResearch: (...args: Parameters<PerformDeepResearchFn>) =>
+      ipcRenderer.invoke("performDeepResearch", ...args),
+    onResearchEvent: (callback: OnResearchEventFn) => {
+      const subscription = (_event: any, data: ResearchEvent) => callback(data);
+      ipcRenderer.on('research-event', subscription);
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('research-event', subscription);
+      };
+    },
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);
