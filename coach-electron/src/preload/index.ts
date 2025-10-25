@@ -7,6 +7,7 @@ import {
   GetScreenCaptureStatusFn,
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
+  SignInWithGoogleFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -32,6 +33,8 @@ try {
       ipcRenderer.invoke("setScreenCaptureInterval", ...args),
     getScreenCaptureFolder: (...args: Parameters<GetScreenCaptureFolderFn>) =>
       ipcRenderer.invoke("getScreenCaptureFolder", ...args),
+    signInWithGoogle: (...args: Parameters<SignInWithGoogleFn>) =>
+      ipcRenderer.invoke("signInWithGoogle", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

@@ -5,6 +5,7 @@ import {
   GetScreenCaptureStatusFn,
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
+  SignInWithGoogleFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -18,6 +19,7 @@ declare global {
       getScreenCaptureStatus: GetScreenCaptureStatusFn;
       setScreenCaptureInterval: SetScreenCaptureIntervalFn;
       getScreenCaptureFolder: GetScreenCaptureFolderFn;
+      signInWithGoogle: SignInWithGoogleFn;
     };
   }
 }

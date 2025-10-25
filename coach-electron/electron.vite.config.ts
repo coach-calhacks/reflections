@@ -1,6 +1,18 @@
 import { resolve } from "path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
+import dotenv from "dotenv";
+
+// Load environment variables from .env files
+// Load .env.local first (takes priority), then .env
+dotenv.config({ path: resolve(__dirname, ".env.local") });
+dotenv.config({ path: resolve(__dirname, ".env") });
+
+// Debug: Log if credentials are loaded (without exposing the actual values)
+console.log("Google OAuth Config Status:");
+console.log("  GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "✓ Loaded" : "✗ Missing");
+console.log("  GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✓ Loaded" : "✗ Missing");
+console.log("  GOOGLE_REDIRECT_URI:", process.env.GOOGLE_REDIRECT_URI || "Using default: http://localhost");
 
 export default defineConfig({
   main: {
@@ -10,6 +22,17 @@ export default defineConfig({
         "@/lib": resolve("src/main/lib"),
         "@/shared": resolve("src/shared"),
       },
+    },
+    define: {
+      "process.env.GOOGLE_CLIENT_ID": JSON.stringify(
+        process.env.GOOGLE_CLIENT_ID
+      ),
+      "process.env.GOOGLE_CLIENT_SECRET": JSON.stringify(
+        process.env.GOOGLE_CLIENT_SECRET
+      ),
+      "process.env.GOOGLE_REDIRECT_URI": JSON.stringify(
+        process.env.GOOGLE_REDIRECT_URI || "http://localhost"
+      ),
     },
   },
   preload: {

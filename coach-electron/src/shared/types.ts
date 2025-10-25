@@ -14,3 +14,21 @@ export type StopScreenCaptureFn = () => Promise<void>;
 export type GetScreenCaptureStatusFn = () => Promise<ScreenCaptureStatus>;
 export type SetScreenCaptureIntervalFn = (interval: number) => Promise<void>;
 export type GetScreenCaptureFolderFn = () => Promise<string>;
+
+// Google Auth types
+export interface GoogleAuthResult {
+  success: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  idToken?: string;
+  expiresIn?: number;
+  error?: string;
+  userInfo?: {
+    id: string;
+    email: string;
+    name: string;
+    picture: string;
+  };
+}
+
+export type SignInWithGoogleFn = () => Promise<GoogleAuthResult>;

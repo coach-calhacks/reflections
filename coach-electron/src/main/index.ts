@@ -11,6 +11,7 @@ import {
   setScreenCaptureInterval,
   getScreenCaptureFolder,
   initializeScreenCapture,
+  signInWithGoogle,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -19,6 +20,7 @@ import {
   GetScreenCaptureStatusFn,
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
+  SignInWithGoogleFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -110,6 +112,12 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getScreenCaptureFolder",
     (_, ...args: Parameters<GetScreenCaptureFolderFn>) => getScreenCaptureFolder(...args)
+  );
+
+  // Google OAuth IPC event
+  ipcMain.handle(
+    "signInWithGoogle",
+    (_, ...args: Parameters<SignInWithGoogleFn>) => signInWithGoogle(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

@@ -10,7 +10,9 @@ import {
   GetScreenCaptureStatusFn,
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
+  SignInWithGoogleFn,
 } from "@shared/types";
+import { signInWithGoogle as googleAuthSignIn } from "./googleAuth";
 
 // Thie file stores functions used for the front-end
 // to communicate with the main process directly
@@ -254,4 +256,9 @@ export const initializeScreenCapture = (): void => {
     console.log("Auto-starting screen capture from previous session");
     startScreenCapture(captureSettings.interval);
   }
+};
+
+// Google OAuth
+export const signInWithGoogle: SignInWithGoogleFn = async () => {
+  return googleAuthSignIn();
 };
