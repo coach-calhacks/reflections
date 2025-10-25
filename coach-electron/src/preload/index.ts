@@ -1,6 +1,13 @@
 import { contextBridge } from "electron";
 import { ipcRenderer } from "electron/renderer";
-import { GetVersionsFn } from "@shared/types";
+import {
+  GetVersionsFn,
+  StartScreenCaptureFn,
+  StopScreenCaptureFn,
+  GetScreenCaptureStatusFn,
+  SetScreenCaptureIntervalFn,
+  GetScreenCaptureFolderFn,
+} from "@shared/types";
 
 // The preload process plays a middleware role in bridging
 // the call from the front end, and the function in the main process
@@ -15,6 +22,16 @@ try {
     getVersions: (...args: Parameters<GetVersionsFn>) =>
       ipcRenderer.invoke("getVersions", ...args),
     triggerIPC: () => ipcRenderer.invoke("triggerIPC"),
+    startScreenCapture: (...args: Parameters<StartScreenCaptureFn>) =>
+      ipcRenderer.invoke("startScreenCapture", ...args),
+    stopScreenCapture: (...args: Parameters<StopScreenCaptureFn>) =>
+      ipcRenderer.invoke("stopScreenCapture", ...args),
+    getScreenCaptureStatus: (...args: Parameters<GetScreenCaptureStatusFn>) =>
+      ipcRenderer.invoke("getScreenCaptureStatus", ...args),
+    setScreenCaptureInterval: (...args: Parameters<SetScreenCaptureIntervalFn>) =>
+      ipcRenderer.invoke("setScreenCaptureInterval", ...args),
+    getScreenCaptureFolder: (...args: Parameters<GetScreenCaptureFolderFn>) =>
+      ipcRenderer.invoke("getScreenCaptureFolder", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

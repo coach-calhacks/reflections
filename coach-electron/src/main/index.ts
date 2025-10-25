@@ -2,8 +2,24 @@ import { app, shell, BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
-import { getVersions, triggerIPC } from "@/lib";
-import { GetVersionsFn } from "@shared/types";
+import {
+  getVersions,
+  triggerIPC,
+  startScreenCapture,
+  stopScreenCapture,
+  getScreenCaptureStatus,
+  setScreenCaptureInterval,
+  getScreenCaptureFolder,
+  initializeScreenCapture,
+} from "@/lib";
+import {
+  GetVersionsFn,
+  StartScreenCaptureFn,
+  StopScreenCaptureFn,
+  GetScreenCaptureStatusFn,
+  SetScreenCaptureIntervalFn,
+  GetScreenCaptureFolderFn,
+} from "@shared/types";
 
 function createWindow(): void {
   // Create the browser window.
@@ -16,8 +32,9 @@ function createWindow(): void {
     ...(process.platform === "linux" ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
-      sandbox: true,
+      sandbox: false, // Changed from true - needed for desktopCapturer
       contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -68,6 +85,35 @@ app.whenReady().then(() => {
   );
 
   ipcMain.handle("triggerIPC", () => triggerIPC());
+
+  // Screen capture IPC events
+  ipcMain.handle(
+    "startScreenCapture",
+    (_, ...args: Parameters<StartScreenCaptureFn>) => startScreenCapture(...args)
+  );
+
+  ipcMain.handle(
+    "stopScreenCapture",
+    (_, ...args: Parameters<StopScreenCaptureFn>) => stopScreenCapture(...args)
+  );
+
+  ipcMain.handle(
+    "getScreenCaptureStatus",
+    (_, ...args: Parameters<GetScreenCaptureStatusFn>) => getScreenCaptureStatus(...args)
+  );
+
+  ipcMain.handle(
+    "setScreenCaptureInterval",
+    (_, ...args: Parameters<SetScreenCaptureIntervalFn>) => setScreenCaptureInterval(...args)
+  );
+
+  ipcMain.handle(
+    "getScreenCaptureFolder",
+    (_, ...args: Parameters<GetScreenCaptureFolderFn>) => getScreenCaptureFolder(...args)
+  );
+
+  // Initialize screen capture (auto-start if previously enabled)
+  initializeScreenCapture();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

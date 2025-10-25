@@ -1,4 +1,11 @@
-import { GetVersionsFn } from "@shared/types";
+import {
+  GetVersionsFn,
+  StartScreenCaptureFn,
+  StopScreenCaptureFn,
+  GetScreenCaptureStatusFn,
+  SetScreenCaptureIntervalFn,
+  GetScreenCaptureFolderFn,
+} from "@shared/types";
 
 // Type definition for the preload process
 declare global {
@@ -6,6 +13,11 @@ declare global {
     context: {
       getVersions: GetVersionsFn;
       triggerIPC: () => void;
+      startScreenCapture: StartScreenCaptureFn;
+      stopScreenCapture: StopScreenCaptureFn;
+      getScreenCaptureStatus: GetScreenCaptureStatusFn;
+      setScreenCaptureInterval: SetScreenCaptureIntervalFn;
+      getScreenCaptureFolder: GetScreenCaptureFolderFn;
     };
   }
 }
