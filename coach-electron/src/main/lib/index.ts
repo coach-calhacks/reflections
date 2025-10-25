@@ -158,7 +158,7 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
 
     // Generate content using Gemini with function calling
     const result = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-lite",
       contents: [prompt, imagePart],
       config: {
         tools: [checkUserFocusTool],
