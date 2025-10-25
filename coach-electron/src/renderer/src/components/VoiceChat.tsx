@@ -11,8 +11,6 @@ import { ShimmeringText } from "@/components/ui/shimmering-text"
 
 const DEFAULT_AGENT = {
   agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
-  name: "Customer Support",
-  description: "Tap to start voice chat",
 }
 
 type AgentState =
@@ -22,7 +20,16 @@ type AgentState =
   | "disconnecting"
   | null
 
-export default function VoiceChat() {
+interface VoiceChatProps {
+  userInfo?: {
+    name: string
+    email: string
+  }
+}
+
+export default function VoiceChat({ userInfo }: VoiceChatProps) {
+  const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Customer Support"
+  const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -95,7 +102,7 @@ export default function VoiceChat() {
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          <h2 className="text-xl font-semibold">{DEFAULT_AGENT.name}</h2>
+          <h2 className="text-xl font-semibold">{displayName}</h2>
           <AnimatePresence mode="wait">
             {errorMessage ? (
               <motion.p
@@ -115,7 +122,7 @@ export default function VoiceChat() {
                 exit={{ opacity: 0, y: 10 }}
                 className="text-muted-foreground text-sm"
               >
-                {DEFAULT_AGENT.description}
+                {displayDescription}
               </motion.p>
             ) : (
               <motion.div
