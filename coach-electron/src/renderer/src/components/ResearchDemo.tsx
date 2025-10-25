@@ -34,7 +34,7 @@ export function ResearchDemo({
   const [finalResult, setFinalResult] = useState<ResearchResponse | null>(null);
   const [instructions, setInstructions] = useState(
     userInfo 
-      ? `Research personalized productivity tips and focus strategies for ${userInfo.name}, who is interested in improving their work efficiency and maintaining deep focus throughout the day.`
+      ? `Find out everything about ${userInfo.name} (${userInfo.email}). Research their entire background including: their early life and upbringing, where they went to school (elementary, high school, university), their location and where they've lived, their work history and career progression, what they currently do professionally, their achievements and notable projects, their interests and hobbies, their online presence and social media, and any other relevant information about who they are and what they've done throughout their life.`
       : 'What are the latest developments in AI research in 2025?'
   );
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -90,9 +90,7 @@ export function ResearchDemo({
       
       // Call onComplete callback if provided
       if (onComplete) {
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        onComplete();
       }
     } catch (error) {
       console.error('Research error:', error);

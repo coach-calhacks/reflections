@@ -84,10 +84,13 @@ const App = () => {
     // Show setup progress before showing voice chat
     if (setupStep !== "complete") {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen relative">
+        <div className="flex flex-col items-center justify-center min-h-screen relative width-full">
           {/* Progress bar at top */}
-          <div className="absolute top-0 left-0 right-0 p-4">
+          <div className="absolute top-0 p-4">
             <Progress value={getProgressValue()} className="h-2" />
+            <h1 className="text-2xl font-bold text-center pt-4 whitespace-nowrap">
+              Learning about you, {userInfo.name.split(' ')[0]}
+            </h1>
           </div>
 
           {/* Content */}
