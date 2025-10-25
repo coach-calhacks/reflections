@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import googleIcon from "./assets/google_icon.svg";
-import { useState } from "react";
+import RecordingSettings from "@/components/RecordingSettings";
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState<"login" | "recording">("login");
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -33,6 +35,11 @@ const App = () => {
     }
   };
 
+  // If on recording settings page, show that component
+  if (currentPage === "recording") {
+    return <RecordingSettings />;
+  }
+
   if (userInfo) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -50,7 +57,6 @@ const App = () => {
       </div>
     );
   }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-0">
       <div className="text-center mb-32">
@@ -68,7 +74,12 @@ const App = () => {
       {error && (
         <p className="text-red-500 text-sm mt-4 max-w-md text-center">{error}</p>
       )}
-      <Button className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white mt-2">Continue as Caden</Button>
+      <Button 
+        onClick={() => setCurrentPage("recording")}
+        className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white mt-2"
+      >
+        Continue as Caden
+      </Button>
     </div>
   );
 };
