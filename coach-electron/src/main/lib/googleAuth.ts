@@ -35,17 +35,26 @@ export class GoogleAuth {
 
   async signIn(): Promise<GoogleAuthResult> {
     try {
+      console.log("[GoogleAuth] Starting sign-in process...");
       const authCode = await this.getAuthorizationCode();
+      
       if (!authCode) {
-        return { success: false, error: "Failed to get authorization code" };
+        console.error("[GoogleAuth] Failed to get authorization code - no code returned");
+        return { success: false, error: "Failed to get authorization code - user may have closed the window" };
       }
 
+      console.log("[GoogleAuth] Got authorization code:", authCode.substring(0, 20) + "...");
+      
       const tokens = await this.exchangeCodeForTokens(authCode);
       if (!tokens.access_token) {
-        return { success: false, error: "Failed to exchange code for tokens" };
+        console.error("[GoogleAuth] Failed to exchange code for tokens. Response:", JSON.stringify(tokens, null, 2));
+        return { success: false, error: `Failed to exchange code for tokens: ${JSON.stringify(tokens)}` };
       }
 
+      console.log("[GoogleAuth] Successfully got access token");
+      
       const userInfo = await this.getUserInfo(tokens.access_token);
+      console.log("[GoogleAuth] Successfully got user info:", userInfo.email);
 
       return {
         success: true,
@@ -56,6 +65,7 @@ export class GoogleAuth {
         userInfo,
       };
     } catch (error) {
+      console.error("[GoogleAuth] Error during sign-in:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
@@ -90,7 +100,9 @@ export class GoogleAuth {
 
       // Handle navigation - this catches the redirect before it tries to load
       authWindow.webContents.on("will-navigate", (event, url) => {
+        console.log("[GoogleAuth] will-navigate event:", url);
         if (url.startsWith(this.config.redirectUri)) {
+          console.log("[GoogleAuth] Preventing navigation and handling callback");
           event.preventDefault();
           this.handleCallback(url, authWindow, safeResolve);
         }
@@ -98,7 +110,9 @@ export class GoogleAuth {
 
       // Handle redirect
       authWindow.webContents.on("will-redirect", (event, url) => {
+        console.log("[GoogleAuth] will-redirect event:", url);
         if (url.startsWith(this.config.redirectUri)) {
+          console.log("[GoogleAuth] Preventing redirect and handling callback");
           event.preventDefault();
           this.handleCallback(url, authWindow, safeResolve);
         }
@@ -106,15 +120,19 @@ export class GoogleAuth {
 
       // Handle navigation (for some OAuth flows)
       authWindow.webContents.on("did-navigate", (event, url) => {
+        console.log("[GoogleAuth] did-navigate event:", url);
         if (url.startsWith(this.config.redirectUri)) {
+          console.log("[GoogleAuth] Handling callback from did-navigate");
           this.handleCallback(url, authWindow, safeResolve);
         }
       });
 
       // Handle the case where the page fails to load (ERR_CONNECTION_REFUSED)
       authWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+        console.log("[GoogleAuth] did-fail-load event:", validatedURL, "Error:", errorDescription);
         // Check if this is our redirect URL with the auth code
         if (validatedURL.startsWith(this.config.redirectUri)) {
+          console.log("[GoogleAuth] Handling callback from did-fail-load");
           this.handleCallback(validatedURL, authWindow, safeResolve);
         }
       });
@@ -144,13 +162,41 @@ export class GoogleAuth {
     authWindow: BrowserWindow,
     resolve: (code: string | null) => void
   ): void {
-    const urlObj = new URL(url);
+    console.log("[GoogleAuth] Handling callback URL:", url);
+    
+    try {
+      const urlObj = new URL(url);
+      console.log("[GoogleAuth] Parsed URL - origin:", urlObj.origin, "pathname:", urlObj.pathname);
+      console.log("[GoogleAuth] Expected redirect URI:", this.config.redirectUri);
 
-    // Check if this is our redirect URI
-    if (urlObj.origin + urlObj.pathname === this.config.redirectUri) {
-      const code = urlObj.searchParams.get("code");
+      // Check if this is our redirect URI (be more lenient with matching)
+      if (url.startsWith(this.config.redirectUri)) {
+        const code = urlObj.searchParams.get("code");
+        const error = urlObj.searchParams.get("error");
+        
+        if (error) {
+          console.error("[GoogleAuth] OAuth error:", error);
+          authWindow.close();
+          resolve(null);
+          return;
+        }
+        
+        if (code) {
+          console.log("[GoogleAuth] Successfully extracted auth code:", code.substring(0, 20) + "...");
+          authWindow.close();
+          resolve(code);
+        } else {
+          console.error("[GoogleAuth] No code found in URL params");
+          authWindow.close();
+          resolve(null);
+        }
+      } else {
+        console.log("[GoogleAuth] URL does not match redirect URI, ignoring");
+      }
+    } catch (error) {
+      console.error("[GoogleAuth] Error parsing callback URL:", error);
       authWindow.close();
-      resolve(code);
+      resolve(null);
     }
   }
 
