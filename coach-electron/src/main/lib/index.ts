@@ -128,9 +128,13 @@ const checkUserFocusTool = {
         is_locked_in: {
           type: Type.BOOLEAN,
           description: "True if user is on productive/work apps, False if on distracting apps"
+        },
+        user_activity_description: {
+          type: Type.STRING,
+          description: "Brief description of what the user is currently doing (e.g., 'coding in VS Code', 'browsing social media', 'watching YouTube')"
         }
       },
-      required: ["is_locked_in"]
+      required: ["is_locked_in", "user_activity_description"]
     }
   }]
 };
@@ -172,16 +176,20 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
     if (functionCalls && functionCalls.length > 0) {
       const functionCall = functionCalls[0];
       if (functionCall.name === "check_user_focus") {
-        const { is_locked_in } = functionCall.args as { is_locked_in: boolean };
+        const { is_locked_in, user_activity_description } = functionCall.args as { 
+          is_locked_in: boolean;
+          user_activity_description: string;
+        };
         
-        // Output the boolean result to terminal
+        // Output the results to terminal
         console.log(`Is locked in: ${is_locked_in}`);
+        console.log(`User activity: ${user_activity_description}`);
         
         // Only send notification if user is NOT locked in
         if (!is_locked_in) {
           new Notification({
             title: "Focus Alert",
-            body: "You are not locked in!"
+            body: `You are not locked in! ${user_activity_description}`
           }).show();
         }
       }
