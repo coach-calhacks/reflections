@@ -70,9 +70,10 @@ export const triggerIPC = () => {
 let captureInterval: NodeJS.Timeout | null = null;
 let captureSettings = {
   isCapturing: false,
-  interval: 10, // default 10 seconds
+  interval: 18, // default 18 seconds
   lastCaptureTime: undefined as string | undefined,
 };
+let isAnalyzing = false; // Flag to prevent concurrent analyses
 
 const SETTINGS_FILE = "screen-capture-settings.json";
 const SCREENSHOT_FOLDER = "CoachScreenshots";
@@ -98,7 +99,7 @@ const loadSettings = (): void => {
     if (fs.existsSync(settingsPath)) {
       const data = fs.readFileSync(settingsPath, "utf-8");
       const loaded = JSON.parse(data);
-      captureSettings.interval = loaded.interval || 10;
+      captureSettings.interval = loaded.interval || 18;
       captureSettings.isCapturing = loaded.isCapturing || false;
     }
   } catch (error) {
@@ -151,11 +152,11 @@ const checkUserFocusTool = {
         },
         user_activity_description: {
           type: Type.STRING,
-          description: "Brief description of what the user is currently doing (e.g., 'coding in VS Code', 'browsing social media', 'watching YouTube')"
+          description: "Description of what the user is currently doing (e.g., 'coding in VS Code', 'browsing social media', 'watching YouTube')"
         },
         same_task: {
           type: Type.BOOLEAN,
-          description: "True if the current activity is the same task as the previous activity, False if it's a different task or context has changed"
+          description: "True if the current activity is a similar task to the previous activity, False if it's a different task or context has changed"
         },
         task_category: {
           type: Type.STRING,
@@ -201,19 +202,29 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
 
 // Analyze screenshot with Gemini AI
 const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
+  // Check if another analysis is already running
+  if (isAnalyzing) {
+    console.log("Analysis already in progress, skipping this screenshot to prevent race conditions");
+    return;
+  }
+
   if (!genAI) {
     console.log("Gemini AI not initialized. Skipping screenshot analysis.");
     return;
   }
 
+  // Set flag to prevent concurrent analyses
+  isAnalyzing = true;
+
   try {
-    // Fetch most recent activity if user is logged in
-    let previousActivityData: { description: string; seq_time: number } | null = null;
+    // Fetch most recent activity if user is logged in (do this early but we'll refetch just before insert)
+    let previousActivityDescription: string | null = null;
     if (userEmail) {
-      previousActivityData = await getMostRecentActivity(userEmail);
-      if (previousActivityData) {
-        console.log(`Previous activity: ${previousActivityData.description}`);
-        console.log(`Previous seq_time: ${previousActivityData.seq_time}`);
+      const previousData = await getMostRecentActivity(userEmail);
+      if (previousData) {
+        previousActivityDescription = previousData.description;
+        console.log(`Previous activity: ${previousData.description}`);
+        console.log(`Previous seq_time: ${previousData.seq_time}`);
       }
     }
 
@@ -224,8 +235,8 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
     // Prepare the prompt and image
     let prompt = "Analyze this screenshot and determine if the user is 'locked in' (focused on productive work like coding, writing, professional tools, learning, etc.) or distracted (social media, entertainment, gaming, shopping, etc.).";
     
-    if (previousActivityData) {
-      prompt += ` The user's previous activity was: "${previousActivityData.description}". Determine if the current activity is the same task or a different task.`;
+    if (previousActivityDescription) {
+      prompt += ` The user's previous activity was: "${previousActivityDescription}". Determine if the current activity is the same task or a different task.`;
     } else {
       prompt += " This is the first activity being tracked.";
     }
@@ -239,8 +250,9 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
       },
     };
 
-    // Generate content using Gemini with function calling
-    const result = await genAI.models.generateContent({
+    // Generate content using Gemini with function calling (with timeout)
+    const GEMINI_TIMEOUT_MS = 30000; // 30 second timeout
+    const geminiPromise = genAI.models.generateContent({
       model: "gemini-2.5-flash-lite",
       contents: [prompt, imagePart],
       config: {
@@ -248,6 +260,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
         toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
       },
     });
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Gemini API timeout after 30 seconds')), GEMINI_TIMEOUT_MS);
+    });
+
+    const result = await Promise.race([geminiPromise, timeoutPromise]) as Awaited<typeof geminiPromise>;
 
     // Check if the model made a function call
     const functionCalls = result.functionCalls;
@@ -271,12 +289,15 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
         // Insert stats into Supabase if user is logged in
         if (userEmail && supabase) {
           try {
+            // IMPORTANT: Re-fetch most recent activity RIGHT before inserting to minimize race condition
+            const freshPreviousActivityData = await getMostRecentActivity(userEmail);
+            
             // Calculate seq_time based on whether it's the same task
             let seqTime: number;
-            if (same_task && previousActivityData) {
+            if (same_task && freshPreviousActivityData) {
               // Same task: add current interval to previous seq_time
-              seqTime = previousActivityData.seq_time + captureSettings.interval;
-              console.log(`Same task - incrementing seq_time: ${previousActivityData.seq_time} + ${captureSettings.interval} = ${seqTime}`);
+              seqTime = freshPreviousActivityData.seq_time + captureSettings.interval;
+              console.log(`Same task - incrementing seq_time: ${freshPreviousActivityData.seq_time} + ${captureSettings.interval} = ${seqTime}`);
             } else {
               // Different task or first activity: restart counter
               seqTime = captureSettings.interval;
@@ -326,6 +347,9 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
     if (error instanceof Error) {
       console.error("Error details:", error.message);
     }
+  } finally {
+    // Always reset the flag, even if there was an error
+    isAnalyzing = false;
   }
 };
 

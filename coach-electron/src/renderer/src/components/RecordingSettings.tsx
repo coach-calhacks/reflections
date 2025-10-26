@@ -7,10 +7,10 @@ const RecordingSettings = () => {
   const [count, setCount] = useState<number>(0);
   const [captureStatus, setCaptureStatus] = useState<ScreenCaptureStatus>({
     isCapturing: false,
-    interval: 10,
+    interval: 18,
     saveFolder: "",
   });
-  const [intervalInput, setIntervalInput] = useState<string>("10");
+  const [intervalInput, setIntervalInput] = useState<string>("18");
   const [statusMessage, setStatusMessage] = useState<string>("");
 
   // Load initial capture status
@@ -47,7 +47,7 @@ const RecordingSettings = () => {
         setCaptureStatus((prev) => ({ ...prev, isCapturing: false }));
       } else {
         // Start capture
-        const interval = parseInt(intervalInput) || 10;
+        const interval = parseInt(intervalInput) || 18;
         const result = await window.context.startScreenCapture(interval);
         
         if (result.success) {
