@@ -181,7 +181,7 @@ const Dashboard = () => {
 
         {/* Screen Capture Controls */}
         <div className="w-full max-w-md">
-          <div className="flex items-center justify-center gap-4 p-4 bg-white rounded-lg border">
+          <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg border">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Status:</span>
               <span className={`text-sm font-bold ${captureStatus.isCapturing ? 'text-green-600' : 'text-gray-500'}`}>

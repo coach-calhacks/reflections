@@ -29,7 +29,7 @@ interface VoiceChatProps {
 }
 
 export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
-  const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Customer Support"
+  const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Agent"
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
