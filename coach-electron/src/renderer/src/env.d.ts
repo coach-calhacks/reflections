@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_ELEVENLABS_AGENT_ID: string
+  readonly VITE_ELEVENLABS_DEFAULT_AGENT_ID: string
 }
 
 interface ImportMeta {

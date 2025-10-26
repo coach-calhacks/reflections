@@ -11,7 +11,7 @@ interface FaceTimeCallProps {
 }
 
 const DEFAULT_AGENT = {
-  agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
+  agentId: import.meta.env.VITE_ELEVENLABS_DEFAULT_AGENT_ID || "",
 }
 
 export const FaceTimeCall = ({ onEndCall, userInfo }: FaceTimeCallProps) => {

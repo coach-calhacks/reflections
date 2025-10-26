@@ -18,7 +18,7 @@ The Dashboard includes an integrated voice and text chat powered by ElevenLabs A
 1. In the project root (`coach-electron/`), create a new file named `.env`
 2. Add your ElevenLabs Agent ID:
    ```
-   ELEVENLABS_AGENT_ID=your_actual_agent_id_here
+   ELEVENLABS_DEFAULT_AGENT_ID=your_actual_agent_id_here
    ```
 3. Save the file
 
@@ -52,12 +52,12 @@ The chat interface appears on the right side of the Dashboard and provides:
 ## Troubleshooting
 
 ### Chat Interface Not Visible?
-- Ensure you've properly fixed the environment variable import (should use `import.meta.env.VITE_ELEVENLABS_AGENT_ID`)
+- Ensure you've properly fixed the environment variable import (should use `import.meta.env.VITE_ELEVENLABS_DEFAULT_AGENT_ID`)
 - Restart the development server after creating/updating the .env file
 - Check the browser console for any errors
 
 ### "Tap to start voice chat" message but nothing happens?
-- Verify your `ELEVENLABS_AGENT_ID` is set in `.env`
+- Verify your `ELEVENLABS_DEFAULT_AGENT_ID` is set in `.env`
 - Ensure the Agent ID is valid and active in your ElevenLabs account
 - Check your internet connectivity
 

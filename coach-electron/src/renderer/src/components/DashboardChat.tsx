@@ -45,7 +45,7 @@ interface ChatMessage {
 }
 
 const DEFAULT_AGENT = {
-  agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
+  agentId: import.meta.env.VITE_ELEVENLABS_DEFAULT_AGENT_ID || "",
   name: "Customer Support",
   description: "AI Voice Assistant",
 }
