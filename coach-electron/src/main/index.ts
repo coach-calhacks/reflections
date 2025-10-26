@@ -13,6 +13,7 @@ import {
   initializeScreenCapture,
   signInWithGoogle,
   performDeepResearch,
+  getTaskStats,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -23,6 +24,7 @@ import {
   GetScreenCaptureFolderFn,
   SignInWithGoogleFn,
   PerformDeepResearchFn,
+  GetTaskStatsFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -133,6 +135,12 @@ app.whenReady().then(() => {
       
       return performDeepResearch(args[0], onEvent);
     }
+  );
+
+  // Stats IPC event
+  ipcMain.handle(
+    "getTaskStats",
+    (_, ...args: Parameters<GetTaskStatsFn>) => getTaskStats(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

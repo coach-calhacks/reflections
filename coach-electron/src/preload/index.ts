@@ -11,6 +11,7 @@ import {
   PerformDeepResearchFn,
   OnResearchEventFn,
   ResearchEvent,
+  GetTaskStatsFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -48,6 +49,8 @@ try {
         ipcRenderer.removeListener('research-event', subscription);
       };
     },
+    getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
+      ipcRenderer.invoke("getTaskStats", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

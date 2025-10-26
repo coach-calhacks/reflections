@@ -8,6 +8,7 @@ import {
   SignInWithGoogleFn,
   PerformDeepResearchFn,
   OnResearchEventFn,
+  GetTaskStatsFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -24,6 +25,7 @@ declare global {
       signInWithGoogle: SignInWithGoogleFn;
       performDeepResearch: PerformDeepResearchFn;
       onResearchEvent: (callback: OnResearchEventFn) => () => void;
+      getTaskStats: GetTaskStatsFn;
     };
   }
 }
