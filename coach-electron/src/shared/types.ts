@@ -202,6 +202,16 @@ export type GetTaskStatsFn = () => Promise<TaskStats[]>;
 
 // FaceTime Call types
 export type SetFaceTimeCallActiveFn = (isActive: boolean) => Promise<void>;
+export type StartFaceTimeCallFn = () => Promise<void>;
+
+// Desktop Sources types
+export interface DesktopSource {
+  id: string;
+  name: string;
+  thumbnail: string;
+}
+
+export type GetDesktopSourcesFn = () => Promise<DesktopSource[]>;
 
 // Prompt configuration types
 export interface PromptConfig {

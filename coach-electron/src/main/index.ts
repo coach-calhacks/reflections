@@ -32,8 +32,6 @@ import {
   SignInWithGoogleFn,
   PerformDeepResearchFn,
   GetTaskStatsFn,
-  StartFaceTimeCallFn,
-  GetDesktopSourcesFn,
   DesktopSource,
   SetFaceTimeCallActiveFn,
   GetPromptConfigFn,
@@ -169,7 +167,7 @@ app.whenReady().then(() => {
   // FaceTime Call IPC events
   ipcMain.handle(
     "startFaceTimeCall",
-    async (_, ...args: Parameters<StartFaceTimeCallFn>) => {
+    async () => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.show();
         mainWindow.focus();
@@ -180,7 +178,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle(
     "getDesktopSources",
-    async (_, ...args: Parameters<GetDesktopSourcesFn>): Promise<DesktopSource[]> => {
+    async (): Promise<DesktopSource[]> => {
       try {
         const sources = await desktopCapturer.getSources({
           types: ['window', 'screen'],
@@ -209,6 +207,8 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getPromptConfig",
     (_, ...args: Parameters<GetPromptConfigFn>) => getPromptConfig(...args)
+  );
+
   // Lifetime Stats IPC event
   ipcMain.handle(
     "getLifetimeTaskStats",

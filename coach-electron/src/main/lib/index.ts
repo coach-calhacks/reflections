@@ -732,6 +732,36 @@ export const getPromptConfig = async (email: string): Promise<any> => {
     console.warn("Supabase client not initialized. Returning default config.");
     return {
       prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  }
+
+  try {
+    // Fetch user's prompt configuration from Supabase
+    const { data, error } = await supabase
+      .from('user_prompts')
+      .select('prompt, warning_message')
+      .eq('email', userEmail)
+      .single();
+
+    if (error) {
+      console.error("Error fetching prompt config:", error);
+      // Return default config if not found
+      return {
+        prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+      };
+    }
+
+    return data || {
+      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  } catch (error) {
+    console.error("Error fetching prompt config:", error);
+    return {
+      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  }
+};
+
 // Get lifetime task statistics from Supabase (all-time data for logged-in user)
 export const getLifetimeTaskStats = async (): Promise<any[]> => {
   if (!supabase) {
@@ -836,28 +866,6 @@ export const analyzeUserEmails = async (services: string[]): Promise<EmailAnalys
   }
 
   try {
-    // Fetch user's prompt configuration from Supabase
-    const { data, error } = await supabase
-      .from('user_prompts')
-      .select('prompt, warning_message')
-      .eq('email', email)
-      .single();
-
-    if (error) {
-      console.error("Error fetching prompt config:", error);
-      // Return default config if not found
-      return {
-        prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
-      };
-    }
-
-    return data || {
-      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
-    };
-  } catch (error) {
-    console.error("Error fetching prompt config:", error);
-    return {
-      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
     console.log('[EmailAnalysis] Starting email analysis for user:', userEmail);
 
     // Generate a unique user ID for Composio using dynamic import (nanoid is ES Module)
