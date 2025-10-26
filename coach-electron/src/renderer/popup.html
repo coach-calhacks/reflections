@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Coach</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      border-radius: 36px;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .popup-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      border-radius: 36px;
+      overflow: hidden;
+      animation: slideIn 0.3s ease-out;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .video-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 36px;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.15);
+      pointer-events: none;
+      border-radius: 36px;
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar-container {
+      position: relative;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5b4c8f 0%, #4a3d7a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .facetime-icon {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 14px;
+      height: 14px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .user-name {
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .call-type {
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 12px;
+      font-weight: 400;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .action-button {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      border: none;
+      position: relative;
+    }
+
+    .action-button:hover {
+      transform: scale(1.05);
+    }
+
+    .video-button {
+      background: #34C759;
+    }
+
+    .end-button {
+      background: #FF3B30;
+    }
+
+    .button-icon {
+      width: 28px;
+      height: 28px;
+      fill: white;
+    }
+
+
+    .camera-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 14px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-container">
+    <video class="video-background" id="video" autoplay playsinline muted></video>
+    <div class="overlay"></div>
+    <div class="camera-loading" id="loading">Initializing camera...</div>
+    
+    <div class="top-bar">
+      <div class="user-info">
+        <div class="avatar-container">
+          <div class="avatar" id="avatar">C</div>
+          <img class="facetime-icon" src="./facetime.svg.png" alt="FaceTime">
+        </div>
+        <div class="user-details">
+          <div class="user-name">Coach</div>
+          <div class="call-type">Facetime Video</div>
+        </div>
+      </div>
+      
+      <div class="action-buttons">
+        <button class="action-button video-button" onclick="event.stopPropagation()">
+          <svg class="button-icon" viewBox="0 0 24 24">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="currentColor"/>
+          </svg>
+        </button>
+        
+        <button class="action-button end-button" onclick="event.stopPropagation()">
+          <svg class="button-icon" viewBox="0 0 24 24">
+            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Initialize camera
+    const video = document.getElementById('video');
+    const loading = document.getElementById('loading');
+    
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }, 
+          audio: false 
+        });
+        video.srcObject = stream;
+        loading.style.display = 'none';
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        loading.textContent = 'Camera unavailable';
+        // Keep the gradient background visible
+      }
+    }
+
+    // Start camera when page loads
+    initCamera();
+
+    // Extract first letter for avatar (from user name or default to 'C')
+    const userName = 'Coach';
+    const avatarLetter = userName.charAt(0).toUpperCase();
+    document.getElementById('avatar').textContent = avatarLetter;
+  </script>
+</body>
+</html>
+

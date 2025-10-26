@@ -16,6 +16,7 @@ import {
   SignInWithGoogleFn,
 } from "@shared/types";
 import { signInWithGoogle as googleAuthSignIn } from "./googleAuth";
+import { showPopupWindow, isPopupOpen } from "./popupWindow";
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, "../../.env") });
@@ -202,6 +203,12 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
 
 // Analyze screenshot with Gemini AI
 const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
+  // Check if popup is open (user needs to respond first)
+  if (isPopupOpen()) {
+    console.log("Popup is open, skipping screenshot analysis");
+    return;
+  }
+
   // Check if another analysis is already running
   if (isAnalyzing) {
     console.log("Analysis already in progress, skipping this screenshot to prevent race conditions");
@@ -338,6 +345,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
             title: "Focus Alert",
             body: `You are not locked in! ${user_activity_description}`
           }).show();
+          
+          // Also show popup window
+          showPopupWindow({
+            title: "Focus Alert",
+            message: `You are not locked in! ${user_activity_description}`
+          });
         }
       }
     }
@@ -355,6 +368,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
 
 // Capture a single screenshot
 const captureScreenshot = async (): Promise<void> => {
+  // Skip if popup is currently open (user needs to respond first)
+  if (isPopupOpen()) {
+    console.log("Popup is open, skipping screenshot capture");
+    return;
+  }
+
   try {
     ensureScreenshotFolder();
     

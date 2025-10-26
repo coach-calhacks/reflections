@@ -65,5 +65,13 @@ export default defineConfig({
     },
     publicDir: resolve("src/renderer/public"),
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, "src/renderer/index.html"),
+          popup: resolve(__dirname, "src/renderer/popup.html"),
+        },
+      },
+    },
   },
 });
