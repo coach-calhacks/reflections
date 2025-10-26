@@ -27,9 +27,11 @@ interface VoiceChatProps {
     email: string
   }
   onEnded?: () => void
+  onProcessingStarted?: () => void
+  onProcessingComplete?: () => void
 }
 
-export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
+export default function VoiceChat({ userInfo, onEnded, onProcessingStarted, onProcessingComplete }: VoiceChatProps) {
   const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Agent"
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
@@ -40,11 +42,13 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
   const uploadConversation = useCallback(async () => {
     if (conversationMessages.current.length === 0) {
       console.log("No messages to upload")
+      if (onProcessingComplete) onProcessingComplete()
       return
     }
 
     if (!sessionStartTime.current) {
       console.log("No session start time")
+      if (onProcessingComplete) onProcessingComplete()
       return
     }
 
@@ -56,16 +60,23 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
 
     try {
       console.log("Uploading conversation with", conversationData.messages.length, "messages")
+      
+      // Notify that processing has started
+      if (onProcessingStarted) onProcessingStarted()
+      
       const result = await window.context.uploadConversation(conversationData)
       if (result.success) {
-        console.log("Conversation uploaded successfully")
+        console.log("Conversation uploaded and system prompt generated successfully")
       } else {
         console.error("Failed to upload conversation:", result.error)
       }
     } catch (error) {
       console.error("Error uploading conversation:", error)
+    } finally {
+      // Notify that processing is complete (success or failure)
+      if (onProcessingComplete) onProcessingComplete()
     }
-  }, [])
+  }, [onProcessingStarted, onProcessingComplete])
 
   const conversation = useConversation({
     onConnect: () => {
@@ -73,11 +84,11 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
       sessionStartTime.current = new Date().toISOString()
       conversationMessages.current = []
     },
-    onDisconnect: async () => {
+    onDisconnect: () => {
       console.log("Disconnected")
-      // Upload conversation to Supabase
-      await uploadConversation()
-      // Invoke onEnded when the call ends naturally or via button
+      // Start upload in background (don't await)
+      uploadConversation()
+      // Immediately invoke onEnded so UI can update
       if (onEnded) onEnded()
     },
     onMessage: (message) => {
@@ -125,19 +136,17 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
     }
   }, [conversation, userInfo, uploadConversation])
 
-  const handleCall = useCallback(async () => {
+  const handleCall = useCallback(() => {
     if (agentState === "disconnected" || agentState === null) {
       setAgentState("connecting")
       startConversation()
     } else if (agentState === "connected") {
-      // Upload conversation before ending
-      await uploadConversation()
+      // End session immediately
       conversation.endSession()
       setAgentState("disconnected")
-      // Ending via button should also trigger onEnded
-      if (onEnded) onEnded()
+      // The onDisconnect handler will trigger upload in background and call onEnded
     }
-  }, [agentState, conversation, startConversation, onEnded, uploadConversation])
+  }, [agentState, conversation, startConversation])
 
   const isCallActive = agentState === "connected"
   const isTransitioning =

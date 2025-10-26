@@ -7,9 +7,11 @@ import {
   CopyIcon,
   PhoneOffIcon,
   SendIcon,
+  Loader2,
 } from "lucide-react"
 
 import { cn } from "@/utils"
+import type { VoiceMessage, ConversationData } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -112,14 +114,53 @@ export default function DashboardChat() {
   const [textInput, setTextInput] = useState("")
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const isTextOnlyModeRef = useRef<boolean>(true)
   const pendingTextRef = useRef<string | null>(null)
+  const conversationMessages = useRef<VoiceMessage[]>([])
+  const sessionStartTime = useRef<string | null>(null)
+
+  const uploadConversation = useCallback(async () => {
+    if (conversationMessages.current.length === 0 || isTextOnlyModeRef.current) {
+      console.log("No voice messages to upload or text-only mode")
+      return
+    }
+
+    if (!sessionStartTime.current) {
+      console.log("No session start time")
+      return
+    }
+
+    const conversationData: ConversationData = {
+      messages: conversationMessages.current,
+      sessionStartAt: sessionStartTime.current,
+      sessionEndAt: new Date().toISOString(),
+    }
+
+    try {
+      console.log("Uploading conversation with", conversationData.messages.length, "messages")
+      setIsProcessing(true)
+      
+      const result = await window.context.uploadConversation(conversationData)
+      if (result.success) {
+        console.log("Conversation uploaded and system prompt generated successfully")
+      } else {
+        console.error("Failed to upload conversation:", result.error)
+      }
+    } catch (error) {
+      console.error("Error uploading conversation:", error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [])
 
   const conversation = useConversation({
     onConnect: () => {
-      // Only clear messages for voice mode
+      // Start tracking session for voice mode
       if (!isTextOnlyModeRef.current) {
+        sessionStartTime.current = new Date().toISOString()
+        conversationMessages.current = []
         setMessages([])
       }
       // If we initiated a text-only session with a pending message, send it now
@@ -132,8 +173,9 @@ export default function DashboardChat() {
       }
     },
     onDisconnect: () => {
-      // Only clear messages for voice mode
+      // Upload conversation in background for voice mode
       if (!isTextOnlyModeRef.current) {
+        uploadConversation()
         setMessages([])
       }
     },
@@ -146,6 +188,16 @@ export default function DashboardChat() {
           content: String(content),
         }
         setMessages((prev) => [...prev, newMessage])
+        
+        // Store for voice mode
+        if (!isTextOnlyModeRef.current) {
+          const voiceMessage: VoiceMessage = {
+            role: (message as any).source === "user" ? "user" : "assistant",
+            message: String(content),
+            timestamp: Date.now(),
+          }
+          conversationMessages.current.push(voiceMessage)
+        }
       }
     },
     onError: (error) => {
@@ -300,12 +352,22 @@ export default function DashboardChat() {
   }, [conversation])
 
   return (
-    <Card
-      className={cn(
-        "mx-auto flex h-[380px] w-full flex-col gap-0 overflow-hidden"
+    <div className="relative">
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-lg">
+          <Loader2 className="h-12 w-12 animate-spin text-white mb-4" />
+          <p className="text-white text-lg font-semibold mb-2">Analyzing your conversation...</p>
+          <p className="text-white/80 text-sm">Generating insights and updating your profile</p>
+        </div>
       )}
-    >
-      <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-4">
+      
+      <Card
+        className={cn(
+          "mx-auto flex h-[380px] w-full flex-col gap-0 overflow-hidden"
+        )}
+      >
+        <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-4">
         <div className="flex items-center gap-4">
           <div className="ring-border relative size-10 overflow-hidden rounded-full ring-1">
             <Orb
@@ -470,5 +532,6 @@ export default function DashboardChat() {
         </div>
       </CardFooter>
     </Card>
+    </div>
   )
 }
