@@ -46,7 +46,7 @@ interface ChatMessage {
 
 const DEFAULT_AGENT = {
   agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
-  name: "Customer Support",
+  name: "Agent",
   description: "AI Voice Assistant",
 }
 
@@ -114,12 +114,21 @@ export default function DashboardChat() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const isTextOnlyModeRef = useRef<boolean>(true)
+  const pendingTextRef = useRef<string | null>(null)
 
   const conversation = useConversation({
     onConnect: () => {
       // Only clear messages for voice mode
       if (!isTextOnlyModeRef.current) {
         setMessages([])
+      }
+      // If we initiated a text-only session with a pending message, send it now
+      if (isTextOnlyModeRef.current && pendingTextRef.current) {
+        const text = pendingTextRef.current
+        pendingTextRef.current = null
+        const userMessage: ChatMessage = { role: "user", content: text }
+        setMessages([userMessage])
+        conversation.sendUserMessage(text)
       }
     },
     onDisconnect: () => {
@@ -129,10 +138,12 @@ export default function DashboardChat() {
       }
     },
     onMessage: (message) => {
-      if (message.message) {
+      const content =
+        (message as any)?.message || (message as any)?.text || (message as any)?.transcript
+      if (content) {
         const newMessage: ChatMessage = {
-          role: message.source === "user" ? "user" : "assistant",
-          content: message.message,
+          role: (message as any).source === "user" ? "user" : "assistant",
+          content: String(content),
         }
         setMessages((prev) => [...prev, newMessage])
       }
@@ -140,6 +151,7 @@ export default function DashboardChat() {
     onError: (error) => {
       console.error("Error:", error)
       setAgentState("disconnected")
+      setErrorMessage("Connection failed. Check Agent ID and network.")
     },
     onDebug: (debug) => {
       console.log("Debug:", debug)
@@ -178,7 +190,7 @@ export default function DashboardChat() {
           await getMicStream()
         }
 
-        // Hardcoded dynamic variables for ElevenLabs agent
+        // Dynamic variables for ElevenLabs agent
         const dynamicVariables = {
           "first-name": "Caden",
           "user-background": "Caden is an AI Software Engineer at Notion and an undergraduate at UC Berkeley studying CS. He comes from Great Neck, a highly competitive academic environment. After high school, he explored startups with a close friend, gaining massive opportunities but also experiencing a cofounder breakup when his friend wanted to drop out. This led him to reflect on his values - realizing the journey from exploring freedom had become another rat race. He chose Berkeley to keep his opportunities open, though sometimes regrets the competitive environment. After a summer interning at Notion (working long hours with little social life) and a disappointing experience at Cluely, he's now at Berkeley feeling lost and in autopilot. He's taking all STEM classes (Math 53H, CS61A, CS61B, AI for startups) which he slightly regrets. Currently trying to find his way through reading books, working on fun projects like this Coach app, and learning to talk to new people, though that's not going great.",
@@ -189,14 +201,6 @@ export default function DashboardChat() {
           agentId: DEFAULT_AGENT.agentId,
           connectionType: textOnly ? "websocket" : "webrtc",
           dynamicVariables: dynamicVariables,
-          overrides: {
-            conversation: {
-              textOnly: textOnly,
-            },
-            agent: {
-              firstMessage: textOnly ? "" : undefined,
-            },
-          },
           onStatusChange: (status) => setAgentState(status.status),
         })
       } catch (error) {
@@ -240,21 +244,16 @@ export default function DashboardChat() {
     const messageToSend = textInput
 
     if (agentState === "disconnected" || agentState === null) {
-      const userMessage: ChatMessage = {
-        role: "user",
-        content: messageToSend,
-      }
       setTextInput("")
       setAgentState("connecting")
+      pendingTextRef.current = messageToSend
 
       try {
         await startConversation(true, true)
-        // Add message once converstation started
-        setMessages([userMessage])
-        // Send message after connection is established
-        conversation.sendUserMessage(messageToSend)
+        // actual send will occur in onConnect handler
       } catch (error) {
         console.error("Failed to start conversation:", error)
+        pendingTextRef.current = null
       }
     } else if (agentState === "connected") {
       const newMessage: ChatMessage = {
