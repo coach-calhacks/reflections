@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useState, useRef } from "react"
 import { useConversation } from "@elevenlabs/react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Loader2Icon, PhoneIcon, PhoneOffIcon } from "lucide-react"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Orb } from "@/components/ui/orb"
 import { ShimmeringText } from "@/components/ui/shimmering-text"
+import type { VoiceMessage, ConversationData } from "@shared/types"
 
 const DEFAULT_AGENT = {
   agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
@@ -25,21 +26,86 @@ interface VoiceChatProps {
     name: string
     email: string
   }
+  onEnded?: () => void
+  onProcessingStarted?: () => void
+  onProcessingComplete?: () => void
 }
 
-export default function VoiceChat({ userInfo }: VoiceChatProps) {
-  const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Customer Support"
+export default function VoiceChat({ userInfo, onEnded, onProcessingStarted, onProcessingComplete }: VoiceChatProps) {
+  const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Agent"
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const conversationMessages = useRef<VoiceMessage[]>([])
+  const sessionStartTime = useRef<string | null>(null)
+
+  const uploadConversation = useCallback(async () => {
+    if (conversationMessages.current.length === 0) {
+      console.log("No messages to upload")
+      if (onProcessingComplete) onProcessingComplete()
+      return
+    }
+
+    if (!sessionStartTime.current) {
+      console.log("No session start time")
+      if (onProcessingComplete) onProcessingComplete()
+      return
+    }
+
+    const conversationData: ConversationData = {
+      messages: conversationMessages.current,
+      sessionStartAt: sessionStartTime.current,
+      sessionEndAt: new Date().toISOString(),
+    }
+
+    try {
+      console.log("Uploading conversation with", conversationData.messages.length, "messages")
+      
+      // Notify that processing has started
+      if (onProcessingStarted) onProcessingStarted()
+      
+      const result = await window.context.uploadConversation(conversationData)
+      if (result.success) {
+        console.log("Conversation uploaded and system prompt generated successfully")
+      } else {
+        console.error("Failed to upload conversation:", result.error)
+      }
+    } catch (error) {
+      console.error("Error uploading conversation:", error)
+    } finally {
+      // Notify that processing is complete (success or failure)
+      if (onProcessingComplete) onProcessingComplete()
+    }
+  }, [onProcessingStarted, onProcessingComplete])
 
   const conversation = useConversation({
-    onConnect: () => console.log("Connected"),
-    onDisconnect: () => console.log("Disconnected"),
-    onMessage: (message) => console.log("Message:", message),
+    onConnect: () => {
+      console.log("Connected")
+      sessionStartTime.current = new Date().toISOString()
+      conversationMessages.current = []
+    },
+    onDisconnect: () => {
+      console.log("Disconnected")
+      // Start upload in background (don't await)
+      uploadConversation()
+      // Immediately invoke onEnded so UI can update
+      if (onEnded) onEnded()
+    },
+    onMessage: (message) => {
+      console.log("Message:", message)
+      // Store the message
+      const voiceMessage: VoiceMessage = {
+        role: message.source === 'user' ? 'user' : 'assistant',
+        message: message.message || '',
+        timestamp: Date.now(),
+      }
+      conversationMessages.current.push(voiceMessage)
+    },
     onError: (error) => {
       console.error("Error:", error)
       setAgentState("disconnected")
+      // Also treat error-triggered disconnect as end
+      if (onEnded) onEnded()
     },
   })
 
@@ -68,15 +134,17 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
         setErrorMessage("Please enable microphone permissions in your browser.")
       }
     }
-  }, [conversation, userInfo])
+  }, [conversation, userInfo, uploadConversation])
 
   const handleCall = useCallback(() => {
     if (agentState === "disconnected" || agentState === null) {
       setAgentState("connecting")
       startConversation()
     } else if (agentState === "connected") {
+      // End session immediately
       conversation.endSession()
       setAgentState("disconnected")
+      // The onDisconnect handler will trigger upload in background and call onEnded
     }
   }, [agentState, conversation, startConversation])
 

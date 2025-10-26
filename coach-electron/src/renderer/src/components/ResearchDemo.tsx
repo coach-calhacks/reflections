@@ -100,6 +100,18 @@ export function ResearchDemo({
       console.log('[ResearchDemo] Research complete:', result);
       setFinalResult(result);
       
+      // Upload research summary to Supabase
+      try {
+        const uploadResult = await window.context.uploadResearchSummary(result);
+        if (uploadResult.success) {
+          console.log('[ResearchDemo] Research summary uploaded successfully');
+        } else {
+          console.error('[ResearchDemo] Failed to upload research summary:', uploadResult.error);
+        }
+      } catch (uploadError) {
+        console.error('[ResearchDemo] Error uploading research summary:', uploadError);
+      }
+      
       // Call onComplete callback if provided
       if (onComplete) {
         onComplete();

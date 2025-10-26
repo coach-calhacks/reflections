@@ -7,6 +7,8 @@ export interface ScreenCaptureStatus {
   interval: number; // in seconds
   saveFolder: string;
   lastCaptureTime?: string;
+  sessionStartAt?: string;
+  sessionEndAt?: string;
 }
 
 export type StartScreenCaptureFn = (interval: number) => Promise<{ success: boolean; message: string }>;
@@ -208,3 +210,98 @@ export interface PromptConfig {
 }
 
 export type GetPromptConfigFn = (email: string) => Promise<PromptConfig>;
+export type GetLifetimeTaskStatsFn = () => Promise<TaskStats[]>;
+
+// Email Analysis types
+export interface EmailAnalysisResult {
+  success: boolean;
+  analysis?: {
+    emailOverview: {
+      communicationStyle: 'formal' | 'informal' | 'mixed';
+      averageEmailsPerDay: number;
+      commonTopics: string[];
+      responsePattern: string;
+    };
+    jobInference: {
+      role: string;
+      industry: string;
+      seniorityLevel: 'entry' | 'mid' | 'senior' | 'executive' | 'unknown';
+      confidence: number;
+    };
+    workEnvironment: {
+      companyType: 'corporate' | 'startup' | 'freelance' | 'academic' | 'unknown';
+      teamSize: 'small' | 'medium' | 'large' | 'unknown';
+      workMode: 'remote' | 'hybrid' | 'office' | 'unknown';
+    };
+    personality: {
+      communicationStyle: string;
+      responsiveness: 'high' | 'medium' | 'low';
+      traits: string[];
+    };
+  };
+  error?: string;
+  connectedAccountId?: string;
+}
+
+export interface EmailAnalysisProgress {
+  stage: 'authenticating' | 'fetching' | 'analyzing' | 'saving' | 'complete' | 'error';
+  message: string;
+  service: string;
+}
+
+export type AnalyzeUserEmailsFn = (services: string[]) => Promise<EmailAnalysisResult>;
+export type OnEmailAnalysisProgressFn = (progress: EmailAnalysisProgress) => void;
+
+// Voice Chat Conversation types
+export interface VoiceMessage {
+  role: 'user' | 'assistant';
+  message: string;
+  timestamp: number;
+}
+
+export interface ConversationData {
+  messages: VoiceMessage[];
+  sessionStartAt: string;
+  sessionEndAt: string;
+}
+
+export interface ConversationUploadResult {
+  success: boolean;
+  error?: string;
+}
+
+export type UploadConversationFn = (conversation: ConversationData) => Promise<ConversationUploadResult>;
+
+// Research Summary types
+export interface ResearchSummary {
+  overview: string;
+  keyFindings: string[];
+  insights: string[];
+  searchesPerformed: number;
+  pagesAnalyzed: number;
+  timestamp: string;
+}
+
+export interface ResearchUploadResult {
+  success: boolean;
+  error?: string;
+}
+
+export type UploadResearchSummaryFn = (research: ResearchResponse) => Promise<ResearchUploadResult>;
+
+// System Prompt Generation types
+export interface SystemPrompt {
+  lifeGoals: string[];
+  tasksToAccomplish: string[];
+  overview: string;
+  keyThemes: string[];
+  generatedAt: string;
+}
+
+export interface SystemPromptResult {
+  success: boolean;
+  systemPrompt?: SystemPrompt;
+  error?: string;
+}
+
+export type GenerateSystemPromptFn = () => Promise<SystemPromptResult>;

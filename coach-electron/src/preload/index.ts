@@ -17,6 +17,13 @@ import {
   OnNavigateToCallFn,
   SetFaceTimeCallActiveFn,
   GetPromptConfigFn,
+  GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
+  OnEmailAnalysisProgressFn,
+  EmailAnalysisProgress,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -59,6 +66,11 @@ try {
         ipcRenderer.removeListener('research-event', subscription);
       };
     },
+    onStatsUpdated: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('stats-updated', handler);
+      return () => ipcRenderer.removeListener('stats-updated', handler);
+    },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
     startFaceTimeCall: (...args: Parameters<StartFaceTimeCallFn>) =>
@@ -77,6 +89,24 @@ try {
         ipcRenderer.removeListener('navigate-to-call', subscription);
       };
     },
+    getLifetimeTaskStats: (...args: Parameters<GetLifetimeTaskStatsFn>) =>
+      ipcRenderer.invoke("getLifetimeTaskStats", ...args),
+    analyzeUserEmails: (...args: Parameters<AnalyzeUserEmailsFn>) =>
+      ipcRenderer.invoke("analyzeUserEmails", ...args),
+    onEmailAnalysisProgress: (callback: OnEmailAnalysisProgressFn) => {
+      const subscription = (_event: any, data: EmailAnalysisProgress) => callback(data);
+      ipcRenderer.on('email-analysis-progress', subscription);
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('email-analysis-progress', subscription);
+      };
+    },
+    uploadConversation: (...args: Parameters<UploadConversationFn>) =>
+      ipcRenderer.invoke("uploadConversation", ...args),
+    uploadResearchSummary: (...args: Parameters<UploadResearchSummaryFn>) =>
+      ipcRenderer.invoke("uploadResearchSummary", ...args),
+    generateSystemPrompt: (...args: Parameters<GenerateSystemPromptFn>) =>
+      ipcRenderer.invoke("generateSystemPrompt", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

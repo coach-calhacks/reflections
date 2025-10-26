@@ -14,6 +14,12 @@ import {
   OnNavigateToCallFn,
   SetFaceTimeCallActiveFn,
   GetPromptConfigFn,
+  GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
+  OnEmailAnalysisProgressFn,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -39,6 +45,13 @@ declare global {
     };
     ipcRenderer: {
       send: (channel: string, data?: any) => void;
+      onStatsUpdated: (callback: () => void) => () => void;
+      getLifetimeTaskStats: GetLifetimeTaskStatsFn;
+      analyzeUserEmails: AnalyzeUserEmailsFn;
+      onEmailAnalysisProgress: (callback: OnEmailAnalysisProgressFn) => () => void;
+      uploadConversation: UploadConversationFn;
+      uploadResearchSummary: UploadResearchSummaryFn;
+      generateSystemPrompt: GenerateSystemPromptFn;
     };
   }
 }

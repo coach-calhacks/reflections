@@ -16,6 +16,11 @@ import {
   getTaskStats,
   setFaceTimeCallActive,
   getPromptConfig,
+  getLifetimeTaskStats,
+  analyzeUserEmails,
+  uploadConversation,
+  uploadResearchSummary,
+  generateSystemPrompt,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -32,6 +37,11 @@ import {
   DesktopSource,
   SetFaceTimeCallActiveFn,
   GetPromptConfigFn,
+  GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 let mainWindow: BrowserWindow | null = null;
@@ -199,6 +209,34 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getPromptConfig",
     (_, ...args: Parameters<GetPromptConfigFn>) => getPromptConfig(...args)
+  // Lifetime Stats IPC event
+  ipcMain.handle(
+    "getLifetimeTaskStats",
+    (_, ...args: Parameters<GetLifetimeTaskStatsFn>) => getLifetimeTaskStats(...args)
+  );
+
+  // Email Analysis IPC event
+  ipcMain.handle(
+    "analyzeUserEmails",
+    (_, ...args: Parameters<AnalyzeUserEmailsFn>) => analyzeUserEmails(...args)
+  );
+
+  // Conversation Upload IPC event
+  ipcMain.handle(
+    "uploadConversation",
+    (_, ...args: Parameters<UploadConversationFn>) => uploadConversation(...args)
+  );
+
+  // Research Summary Upload IPC event
+  ipcMain.handle(
+    "uploadResearchSummary",
+    (_, ...args: Parameters<UploadResearchSummaryFn>) => uploadResearchSummary(...args)
+  );
+
+  // Generate System Prompt IPC event
+  ipcMain.handle(
+    "generateSystemPrompt",
+    (_, ...args: Parameters<GenerateSystemPromptFn>) => generateSystemPrompt(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

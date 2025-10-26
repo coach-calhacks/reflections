@@ -57,6 +57,27 @@ const App = () => {
 
     return unsubscribe;
   }, []);
+  // Dev mode: skip to dashboard with 'S' key
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 's' || e.key === 'S') {
+        console.log('[Dev Mode] Skipping research, jumping to dashboard...');
+        setSetupStep("complete");
+        setCurrentPage("dashboard");
+        // Set a mock user if not already set
+        if (!userInfo) {
+          setUserInfo({
+            name: "Dev User",
+            email: "dev@example.com",
+            id: "dev-user-id"
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [userInfo]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -197,7 +218,13 @@ const App = () => {
         </div>
         
         <div className="w-full max-w-md">
-          <VoiceChat userInfo={userInfo} />
+          <VoiceChat 
+            userInfo={userInfo} 
+            onEnded={() => {
+              // After onboarding call ends, go to dashboard automatically
+              setCurrentPage("dashboard")
+            }}
+          />
         </div>
       </div>
     );
@@ -207,8 +234,8 @@ const App = () => {
       {/* Left side - Content */}
       <div className="flex-1 flex flex-col items-center justify-center gap-0 border-r border-gray-200">
         <div className="text-center mb-32">
-          <h1 className="text-3xl font-bold mb-2">Reflection</h1>
-          <p className="text-gray-600">Talk to yourself, from the future</p>
+          <h1 className="text-3xl font-bold mb-2">Reflections</h1>
+          <p className="text-gray-600">Be greater. Be yourself</p>
         </div>
         <div className="flex flex-col gap-0 items-center">
           <Button

@@ -7,9 +7,11 @@ import {
   CopyIcon,
   PhoneOffIcon,
   SendIcon,
+  Loader2,
 } from "lucide-react"
 
 import { cn } from "@/utils"
+import type { VoiceMessage, ConversationData } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -45,8 +47,8 @@ interface ChatMessage {
 }
 
 const DEFAULT_AGENT = {
-  agentId: import.meta.env.VITE_ELEVENLABS_DEFAULT_AGENT_ID || "",
-  name: "Customer Support",
+  agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
+  name: "Agent",
   description: "AI Voice Assistant",
 }
 
@@ -112,34 +114,96 @@ export default function DashboardChat() {
   const [textInput, setTextInput] = useState("")
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const isTextOnlyModeRef = useRef<boolean>(true)
+  const pendingTextRef = useRef<string | null>(null)
+  const conversationMessages = useRef<VoiceMessage[]>([])
+  const sessionStartTime = useRef<string | null>(null)
+
+  const uploadConversation = useCallback(async () => {
+    if (conversationMessages.current.length === 0 || isTextOnlyModeRef.current) {
+      console.log("No voice messages to upload or text-only mode")
+      return
+    }
+
+    if (!sessionStartTime.current) {
+      console.log("No session start time")
+      return
+    }
+
+    const conversationData: ConversationData = {
+      messages: conversationMessages.current,
+      sessionStartAt: sessionStartTime.current,
+      sessionEndAt: new Date().toISOString(),
+    }
+
+    try {
+      console.log("Uploading conversation with", conversationData.messages.length, "messages")
+      setIsProcessing(true)
+      
+      const result = await window.context.uploadConversation(conversationData)
+      if (result.success) {
+        console.log("Conversation uploaded and system prompt generated successfully")
+      } else {
+        console.error("Failed to upload conversation:", result.error)
+      }
+    } catch (error) {
+      console.error("Error uploading conversation:", error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [])
 
   const conversation = useConversation({
     onConnect: () => {
-      // Only clear messages for voice mode
+      // Start tracking session for voice mode
       if (!isTextOnlyModeRef.current) {
+        sessionStartTime.current = new Date().toISOString()
+        conversationMessages.current = []
         setMessages([])
+      }
+      // If we initiated a text-only session with a pending message, send it now
+      if (isTextOnlyModeRef.current && pendingTextRef.current) {
+        const text = pendingTextRef.current
+        pendingTextRef.current = null
+        const userMessage: ChatMessage = { role: "user", content: text }
+        setMessages([userMessage])
+        conversation.sendUserMessage(text)
       }
     },
     onDisconnect: () => {
-      // Only clear messages for voice mode
+      // Upload conversation in background for voice mode
       if (!isTextOnlyModeRef.current) {
+        uploadConversation()
         setMessages([])
       }
     },
     onMessage: (message) => {
-      if (message.message) {
+      const content =
+        (message as any)?.message || (message as any)?.text || (message as any)?.transcript
+      if (content) {
         const newMessage: ChatMessage = {
-          role: message.source === "user" ? "user" : "assistant",
-          content: message.message,
+          role: (message as any).source === "user" ? "user" : "assistant",
+          content: String(content),
         }
         setMessages((prev) => [...prev, newMessage])
+        
+        // Store for voice mode
+        if (!isTextOnlyModeRef.current) {
+          const voiceMessage: VoiceMessage = {
+            role: (message as any).source === "user" ? "user" : "assistant",
+            message: String(content),
+            timestamp: Date.now(),
+          }
+          conversationMessages.current.push(voiceMessage)
+        }
       }
     },
     onError: (error) => {
       console.error("Error:", error)
       setAgentState("disconnected")
+      setErrorMessage("Connection failed. Check Agent ID and network.")
     },
     onDebug: (debug) => {
       console.log("Debug:", debug)
@@ -178,10 +242,10 @@ export default function DashboardChat() {
           await getMicStream()
         }
 
-        // Hardcoded dynamic variables for ElevenLabs agent
+        // Dynamic variables for ElevenLabs agent
         const dynamicVariables = {
           "first-name": "Caden",
-          "user-background": "Caden is an AI Software Engineer at Notion and an undergraduate at UC Berkeley studying CS. He comes from Great Neck, a highly competitive academic environment. After high school, he explored startups with a close friend, gaining massive opportunities but also experiencing a cofounder breakup when his friend wanted to drop out. This led him to reflect on his values - realizing the journey from exploring freedom had become another rat race. He chose Berkeley to keep his opportunities open, though sometimes regrets the competitive environment. After a summer interning at Notion (working long hours with little social life) and a disappointing experience at Cluely, he's now at Berkeley feeling lost and in autopilot. He's taking all STEM classes (Math 53H, CS61A, CS61B, AI for startups) which he slightly regrets. Currently trying to find his way through reading books, working on fun projects like this Coach app, and learning to talk to new people, though that's not going great.",
+          "user-background": "Caden is an AI Software Engineer at Notion and an undergraduate at UC Berkeley studying CS. He comes from Great Neck, a highly competitive academic environment. After high school, he explored startups with a close friend, gaining massive opportunities but also experiencing a cofounder breakup when his friend wanted to drop out. This led him to reflect on his values - realizing the journey from exploring freedom had become another rat race. He chose Berkeley to keep his opportunities open, though sometimes regrets the competitive environment. After a summer interning at Notion (working long hours with little social life) and a disappointing experience at Cluely, he's now at Berkeley feeling lost and in autopilot. He's taking all STEM classes (Math 53H, CS61A, CS61B, AI for startups) which he slightly regrets. Currently trying to find his way through reading books, working on fun projects like this Reflections app, and learning to talk to new people, though that's not going great.",
           "user-backgroundsummary": "Berkeley CS student and Notion engineer feeling lost in autopilot mode after a cofounder breakup and intense summer. Trying to rediscover meaning through books, fun projects, and connecting with people, while navigating imposter syndrome and questioning his path.",
         }
 
@@ -189,14 +253,6 @@ export default function DashboardChat() {
           agentId: DEFAULT_AGENT.agentId,
           connectionType: textOnly ? "websocket" : "webrtc",
           dynamicVariables: dynamicVariables,
-          overrides: {
-            conversation: {
-              textOnly: textOnly,
-            },
-            agent: {
-              firstMessage: textOnly ? "" : undefined,
-            },
-          },
           onStatusChange: (status) => setAgentState(status.status),
         })
       } catch (error) {
@@ -240,21 +296,16 @@ export default function DashboardChat() {
     const messageToSend = textInput
 
     if (agentState === "disconnected" || agentState === null) {
-      const userMessage: ChatMessage = {
-        role: "user",
-        content: messageToSend,
-      }
       setTextInput("")
       setAgentState("connecting")
+      pendingTextRef.current = messageToSend
 
       try {
         await startConversation(true, true)
-        // Add message once converstation started
-        setMessages([userMessage])
-        // Send message after connection is established
-        conversation.sendUserMessage(messageToSend)
+        // actual send will occur in onConnect handler
       } catch (error) {
         console.error("Failed to start conversation:", error)
+        pendingTextRef.current = null
       }
     } else if (agentState === "connected") {
       const newMessage: ChatMessage = {
@@ -301,12 +352,22 @@ export default function DashboardChat() {
   }, [conversation])
 
   return (
-    <Card
-      className={cn(
-        "mx-auto flex h-[380px] w-full flex-col gap-0 overflow-hidden"
+    <div className="relative">
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-lg">
+          <Loader2 className="h-12 w-12 animate-spin text-white mb-4" />
+          <p className="text-white text-lg font-semibold mb-2">Analyzing your conversation...</p>
+          <p className="text-white/80 text-sm">Generating insights and updating your profile</p>
+        </div>
       )}
-    >
-      <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-4">
+      
+      <Card
+        className={cn(
+          "mx-auto flex h-[380px] w-full flex-col gap-0 overflow-hidden"
+        )}
+      >
+        <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-4">
         <div className="flex items-center gap-4">
           <div className="ring-border relative size-10 overflow-hidden rounded-full ring-1">
             <Orb
@@ -314,6 +375,7 @@ export default function DashboardChat() {
               volumeMode="manual"
               getInputVolume={getInputVolume}
               getOutputVolume={getOutputVolume}
+              colors={["#1F2937", "#374151"]}
             />
           </div>
           <div className="flex flex-col gap-0.5">
@@ -352,7 +414,7 @@ export default function DashboardChat() {
           <ConversationContent className="flex min-w-0 flex-col gap-2 p-6 pb-2">
             {messages.length === 0 ? (
               <ConversationEmptyState
-                icon={<Orb className="size-12" />}
+                icon={<Orb className="size-12" colors={["#1F2937", "#374151"]} />}
                 title={
                   agentState === "connecting" ? (
                     <ShimmeringText text="Starting conversation" />
@@ -389,6 +451,7 @@ export default function DashboardChat() {
                                 ? "talking"
                                 : null
                             }
+                            colors={["#1F2937", "#374151"]}
                           />
                         </div>
                       )}
@@ -469,5 +532,6 @@ export default function DashboardChat() {
         </div>
       </CardFooter>
     </Card>
+    </div>
   )
 }

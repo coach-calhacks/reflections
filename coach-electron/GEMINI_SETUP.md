@@ -28,14 +28,14 @@ npm run dev
 ## How It Works
 
 1. When you start screen capture, the app takes screenshots at your specified interval
-2. Each screenshot is saved to `~/Pictures/CoachScreenshots/`
+2. Each screenshot is saved to `~/Pictures/ReflectionsScreenshots/`
 3. Immediately after saving, the screenshot is sent to Gemini AI with the prompt: "What is this screenshot about?"
 4. Gemini's analysis is logged to the terminal in a formatted output
 
 ## Example Terminal Output
 
 ```
-Screenshot saved: /Users/richard/Pictures/CoachScreenshots/screenshot_2024-10-24_23-45-30.png
+Screenshot saved: /Users/richard/Pictures/ReflectionsScreenshots/screenshot_2024-10-24_23-45-30.png
 
 🔍 Analyzing screenshot with Gemini AI...
 
