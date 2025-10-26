@@ -141,7 +141,7 @@ const checkScreenCapturePermissions = async (): Promise<boolean> => {
 const checkUserFocusTool = {
   functionDeclarations: [{
     name: "check_user_focus",
-    description: "Determines if the user is locked in (focused on productive applications) or distracted, and whether they are working on the same task as before",
+    description: "Determines if the user is locked in (focused on productive applications) or distracted, whether they are working on the same task as before, and categorizes the task type",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -156,9 +156,14 @@ const checkUserFocusTool = {
         same_task: {
           type: Type.BOOLEAN,
           description: "True if the current activity is the same task as the previous activity, False if it's a different task or context has changed"
+        },
+        task_category: {
+          type: Type.STRING,
+          description: "Category of the task: 'analytical' (coding, math proofs, algorithm design, debugging), 'creative' (composing music, design, brainstorming), 'reading' (textbooks, blogs, instructions), 'social media' (facebook, twitter, reddit, instagram, linkedin), 'watching' (netflix, youtube, other media not on social media), 'conversation' (email, video call), or 'other' (if doesn't fit)",
+          enum: ["Analytical", "Creative", "Reading", "Social Media", "Watching", "Conversation", "Other"]
         }
       },
-      required: ["is_locked_in", "user_activity_description", "same_task"]
+      required: ["is_locked_in", "user_activity_description", "same_task", "task_category"]
     }
   }]
 };
@@ -250,16 +255,18 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
     if (functionCalls && functionCalls.length > 0) {
       const functionCall = functionCalls[0];
       if (functionCall.name === "check_user_focus") {
-        const { is_locked_in, user_activity_description, same_task } = functionCall.args as { 
+        const { is_locked_in, user_activity_description, same_task, task_category } = functionCall.args as { 
           is_locked_in: boolean;
           user_activity_description: string;
           same_task: boolean;
+          task_category: string;
         };
         
         // Output the results to terminal
         console.log(`Is locked in: ${is_locked_in}`);
         console.log(`User activity: ${user_activity_description}`);
         console.log(`Same task: ${same_task}`);
+        console.log(`Task category: ${task_category}`);
         
         // Insert stats into Supabase if user is logged in
         if (userEmail && supabase) {
@@ -283,7 +290,8 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
                 description: user_activity_description,
                 on_goal: is_locked_in,
                 seconds: captureSettings.interval,
-                seq_time: seqTime
+                seq_time: seqTime,
+                task: task_category
               });
 
             if (insertError) {
