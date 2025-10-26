@@ -18,6 +18,12 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 const EXA_API_KEY = process.env.EXA_API_KEY;
 const EXA_API_BASE_URL = 'https://api.exa.ai/research/v1';
 
+// Debug logging toggle
+const EXA_DEBUG = process.env.EXA_DEBUG === '1' || process.env.EXA_DEBUG === 'true';
+function dlog(...args: unknown[]): void {
+  if (EXA_DEBUG) console.log('[Exa Research][DEBUG]', ...args);
+}
+
 if (!EXA_API_KEY) {
   console.warn('EXA_API_KEY not found in environment variables. Research functionality will not work.');
 }
@@ -39,6 +45,7 @@ export async function performDeepResearch(
 
     console.log(`[Exa Research] Starting research with model: ${model}`);
     console.log(`[Exa Research] Instructions: ${instructions}`);
+    dlog('EXA_DEBUG enabled =', EXA_DEBUG);
 
     // Step 1: Create the research task
     const createResponse = await fetch(EXA_API_BASE_URL, {
@@ -63,6 +70,7 @@ export async function performDeepResearch(
     const { researchId } = createData;
 
     console.log(`[Exa Research] Research created with ID: ${researchId}`);
+    dlog('Create response status =', createResponse.status, 'initial status =', createData.status);
 
     // Step 2: Stream the research progress
     const finalResult = await streamResearchProgress(researchId, onEvent);
@@ -85,9 +93,42 @@ async function streamResearchProgress(
     const streamUrl = `${EXA_API_BASE_URL}/${researchId}?stream=true&events=true`;
     
     console.log(`[Exa Research] Streaming from: ${streamUrl}`);
+    dlog('Opening SSE stream for researchId =', researchId);
 
     let buffer = '';
     let finalResponse: ResearchResponse | null = null;
+    let sseLineCount = 0;
+    let sseDataCount = 0;
+    let parseErrors = 0;
+    let seenCompletion = false;
+    const seenEventKeys = new Set<string>();
+
+    function truncate(str: string, len = 180): string {
+      return str.length > len ? `${str.slice(0, len)}…` : str;
+    }
+
+    function getEventKey(event: ResearchEvent): string {
+      switch (event.eventType) {
+        case 'research-definition':
+          return `research-definition:${event.createdAt}`;
+        case 'research-output':
+          return `research-output:${event.createdAt}:${event.output.outputType}`;
+        case 'plan-definition':
+          return `plan-definition:${event.planId}`;
+        case 'plan-operation':
+          return `plan-operation:${event.planId}:${event.operationId}`;
+        case 'plan-output':
+          return `plan-output:${event.planId}:${event.output.outputType}:${event.createdAt}`;
+        case 'task-definition':
+          return `task-definition:${event.planId}:${event.taskId}`;
+        case 'task-operation':
+          return `task-operation:${event.planId}:${event.taskId}:${event.operationId}`;
+        case 'task-output':
+          return `task-output:${event.planId}:${event.taskId}:${event.createdAt}`;
+        default:
+          return `unknown:${(event as any).eventType || 'na'}:${(event as any).createdAt || 'na'}`;
+      }
+    }
 
     fetch(streamUrl, {
       method: 'GET',
@@ -115,22 +156,28 @@ async function streamResearchProgress(
           
           if (done) {
             console.log('[Exa Research] Stream complete');
+            dlog('Stream reader done. sseLineCount =', sseLineCount, 'sseDataCount =', sseDataCount, 'parseErrors =', parseErrors, 'seenCompletion =', seenCompletion);
             break;
           }
 
           // Decode the chunk and add to buffer
           buffer += decoder.decode(value, { stream: true });
+          dlog('Received chunk bytes =', value?.byteLength ?? 0, 'buffer length =', buffer.length);
 
           // Process complete SSE messages
           const lines = buffer.split('\n');
           buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
           for (const line of lines) {
+            sseLineCount++;
             if (line.startsWith('data: ')) {
               const data = line.slice(6); // Remove 'data: ' prefix
+              sseDataCount++;
+              dlog('SSE data line #', sseDataCount, truncate(data));
               
               if (data === '[DONE]') {
                 console.log('[Exa Research] Received [DONE] signal');
+                dlog('SSE [DONE] received');
                 continue;
               }
 
@@ -141,6 +188,10 @@ async function streamResearchProgress(
                 if (parsed.researchId && parsed.status) {
                   // This is a full research response
                   finalResponse = parsed as ResearchResponse;
+                  dlog('Snapshot response: status =', parsed.status, 'events =', Array.isArray(parsed.events) ? parsed.events.length : 0);
+                  if (parsed.status === 'completed') {
+                    seenCompletion = true;
+                  }
                   
                   // If we have events in the response, emit them
                   if (parsed.events && Array.isArray(parsed.events)) {
@@ -149,12 +200,26 @@ async function streamResearchProgress(
                         onEvent(event as ResearchEvent);
                       }
                       logEvent(event);
+                      try {
+                        const key = getEventKey(event as ResearchEvent);
+                        if (seenEventKeys.has(key)) {
+                          dlog('Duplicate event (snapshot):', key, 'type =', (event as ResearchEvent).eventType);
+                        } else {
+                          seenEventKeys.add(key);
+                          if (seenCompletion) {
+                            dlog('Post-completion event (snapshot):', key, 'type =', (event as ResearchEvent).eventType);
+                          }
+                        }
+                      } catch (e) {
+                        dlog('Failed to compute event key for snapshot event:', e);
+                      }
                     }
                   }
 
                   // If research is completed or failed, we can resolve
                   if (parsed.status === 'completed' || parsed.status === 'failed') {
                     resolve(finalResponse);
+                    dlog('Resolving stream due to terminal status =', parsed.status);
                     return;
                   }
                 } else if (parsed.eventType) {
@@ -164,9 +229,24 @@ async function streamResearchProgress(
                     onEvent(event);
                   }
                   logEvent(event);
+                  try {
+                    const key = getEventKey(event);
+                    if (seenEventKeys.has(key)) {
+                      dlog('Duplicate event (single):', key, 'type =', event.eventType);
+                    } else {
+                      seenEventKeys.add(key);
+                      if (seenCompletion) {
+                        dlog('Post-completion event (single):', key, 'type =', event.eventType);
+                      }
+                    }
+                  } catch (e) {
+                    dlog('Failed to compute event key for single event:', e);
+                  }
                 }
               } catch (parseError) {
                 console.error('[Exa Research] Failed to parse SSE data:', parseError);
+                parseErrors++;
+                dlog('Parse error on data:', truncate(data));
               }
             }
           }
@@ -175,6 +255,7 @@ async function streamResearchProgress(
         // If we didn't get a final response during streaming, fetch it
         if (!finalResponse) {
           console.log('[Exa Research] Fetching final result...');
+          dlog('Fetching final result via REST fallback. seenCompletion =', seenCompletion);
           finalResponse = await fetchResearchResult(researchId);
         }
 
@@ -182,6 +263,7 @@ async function streamResearchProgress(
       })
       .catch((error) => {
         console.error('[Exa Research] Stream error:', error);
+        dlog('Stream error (caught):', error);
         reject(error);
       });
   });
@@ -203,7 +285,9 @@ async function fetchResearchResult(researchId: string): Promise<ResearchResponse
     throw new Error(`Failed to fetch research result: ${response.status} ${errorText}`);
   }
 
-  return await response.json();
+  const json = await response.json();
+  dlog('Final result received from REST fallback. status =', json?.status, 'events =', Array.isArray(json?.events) ? json.events.length : 0);
+  return json;
 }
 
 /**
