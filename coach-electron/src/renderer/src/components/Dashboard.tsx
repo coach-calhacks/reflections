@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart } from "recharts";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
@@ -86,49 +78,37 @@ const Dashboard = () => {
   const hasData = totalMinutes > 0;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="items-center pb-4">
-          <CardTitle>Activity Radar Chart</CardTitle>
-          <CardDescription>
-            Your activity distribution across different categories
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-0">
-          {hasData ? (
-            <ChartContainer
-              config={chartConfig}
-              className="mx-auto aspect-square max-h-[400px]"
-            >
-              <RadarChart data={chartData}>
-                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                <PolarAngleAxis dataKey="category" />
-                <PolarGrid gridType="polygon" />
-                <Radar
-                  dataKey="value"
-                  fill="var(--color-value)"
-                  fillOpacity={0.6}
-                  stroke="var(--color-value)"
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ChartContainer>
-          ) : (
-            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-              No activity data available yet. Start tracking to see your stats!
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex-col gap-2 text-sm">
-          <div className="flex items-center gap-2 leading-none font-medium">
-            {hasData ? `Total: ${totalMinutes.toFixed(1)} minutes tracked` : "Get started with activity tracking"}
-            <TrendingUp className="h-4 w-4" />
+    <div className="flex min-h-screen p-4">
+      {/* Left Side - Radar Chart */}
+      <div className="flex flex-col w-1/2 items-center justify-center">
+        {hasData ? (
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-square max-h-[400px] w-full max-w-md"
+          >
+            <RadarChart data={chartData}>
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <PolarAngleAxis dataKey="category" />
+              <PolarGrid gridType="polygon" />
+              <Radar
+                dataKey="value"
+                fill="var(--color-value)"
+                fillOpacity={0.6}
+                stroke="var(--color-value)"
+                strokeWidth={2}
+              />
+            </RadarChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+            No activity data available yet. Start tracking to see your stats!
           </div>
-          <div className="text-muted-foreground flex items-center gap-2 leading-none">
-            Based on your task categories from the stats table
-          </div>
-        </CardFooter>
-      </Card>
+        )}
+      </div>
+      
+      {/* Right Side - Blank */}
+      <div className="flex flex-col w-1/2">
+      </div>
     </div>
   );
 };
