@@ -2,12 +2,11 @@ import { useState, Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import googleIcon from "./assets/google_icon.svg";
-import RecordingSettings from "@/components/RecordingSettings";
 import VoiceChat from "@/components/VoiceChat";
 import { ResearchDemo } from "@/components/ResearchDemo";
 import { GLBViewer } from "@/components/GLBViewer";
 import { MCPLoadingScreen } from "@/components/MCPLoadingScreen";
-import Dashboard from "@/components/Dashboard";
+import RecordingDashboard from "@/components/RecordingDashboard";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -46,7 +45,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<"login" | "recording" | "research" | "dashboard">("login");
+  const [currentPage, setCurrentPage] = useState<"login" | "dashboard" | "research">("login");
   const [setupStep, setSetupStep] = useState<SetupStep>("mcp");
 
   const handleGoogleSignIn = async () => {
@@ -91,14 +90,9 @@ const App = () => {
   };
 
 
-  // If on recording settings page, show that component
-  if (currentPage === "recording") {
-    return <RecordingSettings />;
-  }
-
-  // If on dashboard page, show the dashboard
+  // If on dashboard page, show the combined recording dashboard
   if (currentPage === "dashboard") {
-    return <Dashboard />;
+    return <RecordingDashboard />;
   }
 
   // If on research page, show the research demo
@@ -201,29 +195,23 @@ const App = () => {
           <h1 className="text-3xl font-bold mb-2">Reflection</h1>
           <p className="text-gray-600">Talk to yourself, from the future</p>
         </div>
-        <Button 
-          className="w-fit rounded-full bg-white border border-gray-300 text-black hover:bg-gray-100 flex items-center gap-2"
-          onClick={handleGoogleSignIn}
-          disabled={isLoading}
-        >
-          <img src={googleIcon} alt="Google" className="w-4 h-4" />
-          {isLoading ? "Signing in..." : "Continue with Google"}
-        </Button>
-        {error && (
-          <p className="text-red-500 text-sm mt-4 max-w-md text-center">{error}</p>
-        )}
-        <div className="flex gap-2 mt-2">
-          <Button 
-            onClick={() => setCurrentPage("recording")}
-            className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+        <div className="flex flex-col gap-0 items-center">
+          <Button
+            className="w-fit rounded-full bg-white border border-gray-300 text-black hover:bg-gray-100 flex items-center gap-2"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <img src={googleIcon} alt="Google" className="w-4 h-4" />
+            {isLoading ? "Signing in..." : "Continue with Google"}
+          </Button>
+          {error && (
+            <p className="text-red-500 text-sm max-w-md text-center">{error}</p>
+          )}
+          <Button
+            onClick={() => setCurrentPage("dashboard")}
+            className="w-fit rounded-full bg-white border-0 text-black text-xs hover:bg-white"
           >
             Continue as Caden
-          </Button>
-          <Button 
-            onClick={() => setCurrentPage("dashboard")}
-            className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
-          >
-            Continue as Richard
           </Button>
         </div>
       </div>
