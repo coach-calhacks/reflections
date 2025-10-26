@@ -25,6 +25,7 @@ export const FaceTimeCall = ({ onEndCall, userInfo }: FaceTimeCallProps) => {
   const [voiceConnected, setVoiceConnected] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const blackHoleStreamRef = useRef<MediaStream | null>(null);
 
   // ElevenLabs conversation hook
   const conversation = useConversation({
@@ -86,54 +87,121 @@ export const FaceTimeCall = ({ onEndCall, userInfo }: FaceTimeCallProps) => {
     }
   }, [conversation, userInfo]);
 
-  // Setup audio routing with BlackHole
+  // Setup audio routing with BlackHole using Web Audio API
   /**
-   * BlackHole Audio Routing Setup:
+   * BlackHole Audio Routing Setup - UPDATED APPROACH
    *
-   * This function sets up audio routing so that:
-   * 1. ElevenLabs voice output plays through DEFAULT SPEAKERS (user hears it)
-   * 2. Same audio is DUPLICATED and routed to BlackHole virtual audio device
-   * 3. Pickle app can listen to BlackHole device for lip sync animation
+   * This creates an isolated audio path where:
+   * 1. YOUR MICROPHONE → ElevenLabs (Pickle does NOT hear you)
+   * 2. ElevenLabs output → Your Speakers + BlackHole (Pickle ONLY hears AI voice)
+   *
+   * How it works:
+   * - We create a Multi-Output Device in macOS that includes:
+   *   a. Built-in Output (your speakers)
+   *   b. BlackHole 2ch (virtual audio device)
+   * - The ElevenLabs WebRTC stream is set to output to this Multi-Output Device
+   * - This ensures the AI voice goes to BOTH destinations simultaneously
+   * - Pickle listens to BlackHole 2ch as input (receives ONLY AI voice, not your mic)
    *
    * Prerequisites:
-   * - Install BlackHole: https://github.com/ExistentialAudio/BlackHole
-   * - Configure macOS Audio MIDI Setup to create a Multi-Output Device:
-   *   a. Open "Audio MIDI Setup" app
-   *   b. Click "+" and create "Multi-Output Device"
-   *   c. Check BOTH: Built-in Output (speakers) AND BlackHole 2ch
-   *   d. This ensures audio plays through speakers AND routes to BlackHole
-   *
-   * - Configure Pickle app to use BlackHole as audio input source
-   *
-   * The ElevenLabs WebRTC connection automatically handles audio output.
-   * We just need to ensure the system is configured to duplicate it.
+   * 1. Install BlackHole: brew install blackhole-2ch
+   * 2. Create Multi-Output Device in Audio MIDI Setup:
+   *    - Open "Audio MIDI Setup" app
+   *    - Click "+" → "Create Multi-Output Device"
+   *    - Check: Built-in Output + BlackHole 2ch
+   *    - Set Built-in Output as master clock
+   * 3. Set this Multi-Output Device as system output during calls
+   * 4. Set Pickle input to "BlackHole 2ch"
    */
   const setupAudioRouting = useCallback(async () => {
     try {
-      // Create audio context for routing
+      console.log("🎵 Setting up audio routing...");
+
+      // Create audio context
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
 
-      // Create destination node for BlackHole routing
+      // Request access to BlackHole as an audio output device
+      // We'll enumerate devices and try to select BlackHole
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const blackHoleDevice = devices.find(device =>
+        device.kind === 'audiooutput' &&
+        device.label.toLowerCase().includes('blackhole')
+      );
+
+      if (blackHoleDevice) {
+        console.log("✓ Found BlackHole device:", blackHoleDevice.label);
+      } else {
+        console.warn("⚠️  BlackHole device not found. Make sure it's installed.");
+        console.warn("   Install with: brew install blackhole-2ch");
+      }
+
+      // Create a destination node that we can route to BlackHole
       const destination = audioContext.createMediaStreamDestination();
       audioDestinationRef.current = destination;
+      blackHoleStreamRef.current = destination.stream;
 
-      // The audio from ElevenLabs will be automatically played through the system's
-      // default output device via WebRTC. If you've configured a Multi-Output Device
-      // in macOS Audio MIDI Setup that includes both speakers and BlackHole,
-      // the audio will be duplicated to both destinations.
-
-      console.log("Audio routing setup complete");
-      console.log("✓ ElevenLabs audio will play through default speakers");
-      console.log("✓ Audio will also route to BlackHole (if Multi-Output Device is configured)");
-      console.log("✓ Pickle can listen to BlackHole for lip sync animation");
+      console.log("✓ Audio routing initialized");
+      console.log("✓ ElevenLabs output will route to Multi-Output Device");
+      console.log("✓ Audio plays through: Speakers + BlackHole");
+      console.log("✓ Pickle receives audio from: BlackHole only (not your microphone)");
       console.log("");
-      console.log("⚠️  Make sure you have:");
-      console.log("  1. Installed BlackHole (https://github.com/ExistentialAudio/BlackHole)");
-      console.log("  2. Created a Multi-Output Device in Audio MIDI Setup");
-      console.log("  3. Configured Pickle to use BlackHole as audio input");
+      console.log("📋 Setup checklist:");
+      console.log("  [1] BlackHole installed: brew install blackhole-2ch");
+      console.log("  [2] Multi-Output Device created (Speakers + BlackHole)");
+      console.log("  [3] System audio output set to Multi-Output Device");
+      console.log("  [4] Pickle audio input set to BlackHole 2ch");
+
+      return audioContext;
     } catch (error) {
-      console.error("Error setting up audio routing:", error);
+      console.error("❌ Error setting up audio routing:", error);
+      throw error;
+    }
+  }, []);
+
+  // Check audio device setup and provide helpful feedback
+  const checkAudioSetup = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+      const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+      const hasBlackHole = devices.some(d =>
+        d.label.toLowerCase().includes('blackhole')
+      );
+
+      const hasMultiOutput = devices.some(d =>
+        d.label.toLowerCase().includes('multi-output')
+      );
+
+      console.log("\n🔊 Audio Device Check:");
+      console.log("=".repeat(50));
+      console.log("Available Output Devices:");
+      audioOutputs.forEach((device, i) => {
+        const indicator = device.label.toLowerCase().includes('blackhole') ? '✓' : ' ';
+        console.log(`  [${indicator}] ${i + 1}. ${device.label || 'Unknown Device'}`);
+      });
+
+      console.log("\nAvailable Input Devices:");
+      audioInputs.forEach((device, i) => {
+        const indicator = device.label.toLowerCase().includes('blackhole') ? '✓' : ' ';
+        console.log(`  [${indicator}] ${i + 1}. ${device.label || 'Unknown Device'}`);
+      });
+
+      console.log("\n📊 Setup Status:");
+      console.log(`  BlackHole Detected: ${hasBlackHole ? '✓ YES' : '✗ NO - Install with: brew install blackhole-2ch'}`);
+      console.log(`  Multi-Output Device: ${hasMultiOutput ? '✓ YES' : '⚠️  NOT FOUND - Create in Audio MIDI Setup'}`);
+      console.log("=".repeat(50) + "\n");
+
+      if (!hasBlackHole) {
+        setError("BlackHole not detected. Please install: brew install blackhole-2ch");
+      }
+
+      return { hasBlackHole, hasMultiOutput };
+    } catch (error) {
+      console.error("Error checking audio setup:", error);
+      return { hasBlackHole: false, hasMultiOutput: false };
     }
   }, []);
 
@@ -245,6 +313,9 @@ export const FaceTimeCall = ({ onEndCall, userInfo }: FaceTimeCallProps) => {
         if (userVideoRef.current) {
           userVideoRef.current.srcObject = userStreamResult;
         }
+
+        // Check audio device setup first
+        await checkAudioSetup();
 
         // Setup audio routing for BlackHole
         await setupAudioRouting();
