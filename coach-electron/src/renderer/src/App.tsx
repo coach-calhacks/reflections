@@ -147,29 +147,37 @@ const App = () => {
     );
   }
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-0">
-      <div className="text-center mb-32">
-        <h1 className="text-3xl font-bold mb-2">Create an Account</h1>
-        <p className="text-gray-600">Talk to future you</p>
-      </div>
-      <Button 
-        className="w-fit rounded-full bg-white border border-gray-300 text-black hover:bg-gray-100 flex items-center gap-2"
-        onClick={handleGoogleSignIn}
-        disabled={isLoading}
-      >
-        <img src={googleIcon} alt="Google" className="w-4 h-4" />
-        {isLoading ? "Signing in..." : "Continue with Google"}
-      </Button>
-      {error && (
-        <p className="text-red-500 text-sm mt-4 max-w-md text-center">{error}</p>
-      )}
-      <div className="flex gap-2 mt-2">
+    <div className="flex h-screen w-full">
+      {/* Left side - Content */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-0 border-r border-gray-200">
+        <div className="text-center mb-32">
+          <h1 className="text-3xl font-bold mb-2">Reflection</h1>
+          <p className="text-gray-600">Talk to yourself, from the future</p>
+        </div>
         <Button 
-          onClick={() => setCurrentPage("recording")}
-          className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+          className="w-fit rounded-full bg-white border border-gray-300 text-black hover:bg-gray-100 flex items-center gap-2"
+          onClick={handleGoogleSignIn}
+          disabled={isLoading}
         >
-          Continue as Caden
+          <img src={googleIcon} alt="Google" className="w-4 h-4" />
+          {isLoading ? "Signing in..." : "Continue with Google"}
         </Button>
+        {error && (
+          <p className="text-red-500 text-sm mt-4 max-w-md text-center">{error}</p>
+        )}
+        <div className="flex gap-2 mt-2">
+          <Button 
+            onClick={() => setCurrentPage("recording")}
+            className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+          >
+            Continue as Caden
+          </Button>
+        </div>
+      </div>
+      
+      {/* Right side - Empty for now */}
+      <div className="flex-1 h-full">
+        {/* Content to be added later */}
       </div>
     </div>
   );

@@ -13,10 +13,14 @@
   }
 
   body {
-    @apply flex items-center justify-center min-h-dvh text-foreground bg-white;
+    @apply min-h-dvh text-foreground bg-white;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+  }
+
+  #root {
+    @apply w-full h-full;
   }
 }
 

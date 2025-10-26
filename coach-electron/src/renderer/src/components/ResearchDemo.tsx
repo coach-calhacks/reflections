@@ -117,9 +117,11 @@ export function ResearchDemo({
   };
 
   // Process events to determine which ones are currently processing
+  const hasCompletionEvent = events.some(e => e.eventType === 'research-output');
   const processedEvents: ProcessedEvent[] = events.map((event, index) => {
     const isLast = index === events.length - 1;
-    const isProcessing = isResearching && isLast && event.eventType !== 'research-output';
+    // Don't show processing animation if we already have a completion event
+    const isProcessing = isResearching && isLast && event.eventType !== 'research-output' && !hasCompletionEvent;
     
     return {
       event,
