@@ -128,14 +128,6 @@ const RecordingDashboard = () => {
     }
   };
 
-  const handleOpenFolder = async () => {
-    try {
-      const folder = await window.context.getScreenCaptureFolder();
-      setStatusMessage(`Screenshots saved to: ${folder}`);
-    } catch (error) {
-      console.error("Failed to get folder:", error);
-    }
-  };
 
   const totalMinutes = chartData.reduce((sum, item) => sum + item.value, 0);
   const hasData = totalMinutes > 0;
@@ -158,84 +150,73 @@ const RecordingDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen p-4">
-      {/* Left Side - Radar Chart */}
-      <div className="flex flex-col w-1/2 items-center justify-center">
-        <h2 className="text-2xl font-bold mb-4">Activity Overview</h2>
-        {hasData ? (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-square max-h-[400px] w-full max-w-md"
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="w-full max-w-4xl">
+        <h2 className="text-2xl font-bold mb-6 text-center">Activity Overview</h2>
+
+        {/* Radar Chart */}
+        <div className="flex justify-center mb-8">
+          {hasData ? (
+            <ChartContainer
+              config={chartConfig}
+              className="aspect-square max-h-[400px] w-full max-w-md"
+            >
+              <RadarChart data={chartData}>
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                <PolarAngleAxis dataKey="category" />
+                <PolarGrid gridType="polygon" />
+                <Radar
+                  dataKey="value"
+                  fill="var(--color-value)"
+                  fillOpacity={0.6}
+                  stroke="var(--color-value)"
+                  strokeWidth={2}
+                />
+              </RadarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              No activity data available yet. Start tracking to see your stats!
+            </div>
+          )}
+        </div>
+
+        {/* Compressed Screen Capture Controls */}
+        <div className="flex items-center justify-center gap-4 p-4 bg-white rounded-lg border">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Status:</span>
+            <span className={`text-sm font-bold ${captureStatus.isCapturing ? 'text-green-600' : 'text-gray-500'}`}>
+              {captureStatus.isCapturing ? '● Capturing' : '○ Stopped'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Interval:</label>
+            <input
+              type="number"
+              min="1"
+              value={intervalInput}
+              onChange={(e) => handleIntervalChange(e.target.value)}
+              className="w-16 px-2 py-1 border rounded text-sm"
+              disabled={captureStatus.isCapturing}
+            />
+            <span className="text-xs text-muted-foreground">sec</span>
+          </div>
+
+          <Button
+            onClick={handleToggleCapture}
+            variant={captureStatus.isCapturing ? "destructive" : "default"}
+            size="sm"
           >
-            <RadarChart data={chartData}>
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-              <PolarAngleAxis dataKey="category" />
-              <PolarGrid gridType="polygon" />
-              <Radar
-                dataKey="value"
-                fill="var(--color-value)"
-                fillOpacity={0.6}
-                stroke="var(--color-value)"
-                strokeWidth={2}
-              />
-            </RadarChart>
-          </ChartContainer>
-        ) : (
-          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-            No activity data available yet. Start tracking to see your stats!
+            {captureStatus.isCapturing ? 'Stop Capture' : 'Start Capture'}
+          </Button>
+        </div>
+
+        {statusMessage && (
+          <div className="mt-4 text-xs text-muted-foreground bg-background/50 rounded p-2 break-words text-center">
+            {statusMessage}
           </div>
         )}
-      </div>
-
-      {/* Right Side - Recording Controls */}
-      <div className="flex flex-col w-1/2 items-center justify-center">
-        <div className="max-w-md w-full">
-          <h2 className="text-2xl font-bold mb-6">Screen Capture</h2>
-
-          <div className="bg-white rounded-lg p-6 mb-4">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-sm font-medium">Status:</span>
-              <span className={`text-sm font-bold ${captureStatus.isCapturing ? 'text-green-600' : 'text-gray-500'}`}>
-                {captureStatus.isCapturing ? '● Capturing' : '○ Stopped'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <label className="text-sm font-medium">Interval (seconds):</label>
-              <input
-                type="number"
-                min="1"
-                value={intervalInput}
-                onChange={(e) => handleIntervalChange(e.target.value)}
-                className="w-20 px-2 py-1 border rounded text-sm"
-                disabled={captureStatus.isCapturing}
-              />
-            </div>
-
-            <div className="flex justify-center gap-3 mb-4">
-              <Button
-                onClick={handleToggleCapture}
-                variant={captureStatus.isCapturing ? "destructive" : "default"}
-                className="w-32"
-              >
-                {captureStatus.isCapturing ? 'Stop Capture' : 'Start Capture'}
-              </Button>
-              <Button
-                onClick={handleOpenFolder}
-                variant="outline"
-                className="w-32"
-              >
-                Show Folder
-              </Button>
-            </div>
-
-            {statusMessage && (
-              <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 break-words">
-                {statusMessage}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

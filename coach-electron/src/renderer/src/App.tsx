@@ -6,7 +6,7 @@ import VoiceChat from "@/components/VoiceChat";
 import { ResearchDemo } from "@/components/ResearchDemo";
 import { GLBViewer } from "@/components/GLBViewer";
 import { MCPLoadingScreen } from "@/components/MCPLoadingScreen";
-import RecordingDashboard from "@/components/RecordingDashboard";
+import Dashboard from "@/components/Dashboard";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -92,7 +92,7 @@ const App = () => {
 
   // If on dashboard page, show the combined recording dashboard
   if (currentPage === "dashboard") {
-    return <RecordingDashboard />;
+    return <Dashboard />;
   }
 
   // If on research page, show the research demo
