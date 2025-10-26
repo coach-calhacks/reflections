@@ -187,3 +187,13 @@ export interface ResearchResponse {
 
 export type PerformDeepResearchFn = (options: ResearchOptions) => Promise<ResearchResponse>;
 export type OnResearchEventFn = (event: ResearchEvent) => void;
+
+// Stats types
+export interface TaskStats {
+  task: 'Analytical' | 'Creative' | 'Reading' | 'Social Media' | 'Watching' | 'Conversation';
+  count: number;
+  total_seconds: number;
+  total_hours: number;
+}
+
+export type GetTaskStatsFn = () => Promise<TaskStats[]>;

@@ -7,6 +7,7 @@ import VoiceChat from "@/components/VoiceChat";
 import { ResearchDemo } from "@/components/ResearchDemo";
 import { GLBViewer } from "@/components/GLBViewer";
 import { MCPLoadingScreen } from "@/components/MCPLoadingScreen";
+import Dashboard from "@/components/Dashboard";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -45,7 +46,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<"login" | "recording" | "research">("login");
+  const [currentPage, setCurrentPage] = useState<"login" | "recording" | "research" | "dashboard">("login");
   const [setupStep, setSetupStep] = useState<SetupStep>("mcp");
 
   const handleGoogleSignIn = async () => {
@@ -93,6 +94,11 @@ const App = () => {
   // If on recording settings page, show that component
   if (currentPage === "recording") {
     return <RecordingSettings />;
+  }
+
+  // If on dashboard page, show the dashboard
+  if (currentPage === "dashboard") {
+    return <Dashboard />;
   }
 
   // If on research page, show the research demo
@@ -212,6 +218,12 @@ const App = () => {
             className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
           >
             Continue as Caden
+          </Button>
+          <Button 
+            onClick={() => setCurrentPage("dashboard")}
+            className="w-40 rounded-full bg-white border-0 text-black text-xs hover:bg-white"
+          >
+            Continue as Richard
           </Button>
         </div>
       </div>

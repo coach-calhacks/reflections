@@ -170,8 +170,9 @@ const checkUserFocusTool = {
   }]
 };
 
-// Helper function to get most recent activity from Supabase
-const getMostRecentActivity = async (email: string): Promise<{ description: string; seq_time: number } | null> => {
+// Helper function to get most recent activity description from Supabase
+// Used only for providing context to Gemini AI for same_task detection
+const getMostRecentActivity = async (email: string): Promise<{ description: string } | null> => {
   if (!supabase) {
     return null;
   }
@@ -179,7 +180,7 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
   try {
     const { data, error } = await supabase
       .from('stats')
-      .select('description, seq_time')
+      .select('description')
       .eq('email', email)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -194,7 +195,7 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
       return null;
     }
 
-    return data ? { description: data.description, seq_time: data.seq_time || 0 } : null;
+    return data ? { description: data.description } : null;
   } catch (error) {
     console.error('Failed to fetch most recent activity:', error);
     return null;
@@ -224,14 +225,13 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   isAnalyzing = true;
 
   try {
-    // Fetch most recent activity if user is logged in (do this early but we'll refetch just before insert)
+    // Fetch most recent activity if user is logged in for Gemini context
     let previousActivityDescription: string | null = null;
     if (userEmail) {
       const previousData = await getMostRecentActivity(userEmail);
       if (previousData) {
         previousActivityDescription = previousData.description;
         console.log(`Previous activity: ${previousData.description}`);
-        console.log(`Previous seq_time: ${previousData.seq_time}`);
       }
     }
 
@@ -296,36 +296,23 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
         // Insert stats into Supabase if user is logged in
         if (userEmail && supabase) {
           try {
-            // IMPORTANT: Re-fetch most recent activity RIGHT before inserting to minimize race condition
-            const freshPreviousActivityData = await getMostRecentActivity(userEmail);
-            
-            // Calculate seq_time based on whether it's the same task
-            let seqTime: number;
-            if (same_task && freshPreviousActivityData) {
-              // Same task: add current interval to previous seq_time
-              seqTime = freshPreviousActivityData.seq_time + captureSettings.interval;
-              console.log(`Same task - incrementing seq_time: ${freshPreviousActivityData.seq_time} + ${captureSettings.interval} = ${seqTime}`);
-            } else {
-              // Different task or first activity: restart counter
-              seqTime = captureSettings.interval;
-              console.log(`New task - starting seq_time: ${seqTime}`);
-            }
-
-            const { error: insertError } = await supabase
-              .from('stats')
-              .insert({
-                email: userEmail,
-                description: user_activity_description,
-                on_goal: is_locked_in,
-                seconds: captureSettings.interval,
-                seq_time: seqTime,
-                task: task_category
-              });
+            // Use atomic database function to prevent race conditions
+            const { data, error: insertError } = await supabase
+              .rpc('insert_activity_stat', {
+                p_email: userEmail,
+                p_description: user_activity_description,
+                p_on_goal: is_locked_in,
+                p_seconds: captureSettings.interval,
+                p_task: task_category,
+                p_same_task: same_task
+              })
+              .single();
 
             if (insertError) {
               console.error('Error inserting stats:', insertError);
-            } else {
-              console.log('Stats inserted successfully');
+            } else if (data) {
+              const result = data as { new_id: string; new_seq_time: number };
+              console.log(`Stats inserted successfully - ID: ${result.new_id}, seq_time: ${result.new_seq_time}`);
             }
           } catch (statsError) {
             console.error('Failed to insert stats:', statsError);
@@ -564,3 +551,27 @@ export const signInWithGoogle: SignInWithGoogleFn = async () => {
 
 // Web Deep Research
 export { performDeepResearch } from './webResearch';
+
+// Get task statistics from Supabase
+export const getTaskStats = async (): Promise<any[]> => {
+  if (!supabase) {
+    console.warn("Supabase client not initialized. Returning empty stats.");
+    return [];
+  }
+
+  try {
+    // Use SQL aggregation to sum up seconds per task category
+    const { data, error } = await supabase.rpc('get_task_stats');
+
+    if (error) {
+      console.error("Error fetching stats from Supabase:", error);
+      return [];
+    }
+
+    console.log("Task stats fetched:", data);
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching task stats:", error);
+    return [];
+  }
+};
