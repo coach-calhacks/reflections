@@ -178,9 +178,17 @@ export default function DashboardChat() {
           await getMicStream()
         }
 
+        // Hardcoded dynamic variables for ElevenLabs agent
+        const dynamicVariables = {
+          "first-name": "User",
+          "user-background": "Student athlete with a focus on performance optimization and daily training routines. Uses the Coach app to track workouts and maintain accountability.",
+          "user-backgroundsummary": "Active user seeking guidance on training, nutrition, and performance improvement.",
+        }
+
         await conversation.startSession({
           agentId: DEFAULT_AGENT.agentId,
           connectionType: textOnly ? "websocket" : "webrtc",
+          dynamicVariables: dynamicVariables,
           overrides: {
             conversation: {
               textOnly: textOnly,

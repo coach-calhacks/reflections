@@ -47,9 +47,18 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
     try {
       setErrorMessage(null)
       await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // Hardcoded dynamic variables for ElevenLabs agent
+      const dynamicVariables = {
+        "first-name": userInfo?.name || "Guest",
+        "user-background": "Student athlete with a focus on performance optimization and daily training routines. Uses the Coach app to track workouts and maintain accountability.",
+        "user-backgroundsummary": "Active user seeking guidance on training, nutrition, and performance improvement.",
+      }
+      
       await conversation.startSession({
         agentId: DEFAULT_AGENT.agentId,
         connectionType: "webrtc",
+        dynamicVariables: dynamicVariables,
         onStatusChange: (status) => setAgentState(status.status),
       })
     } catch (error) {
@@ -59,7 +68,7 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
         setErrorMessage("Please enable microphone permissions in your browser.")
       }
     }
-  }, [conversation])
+  }, [conversation, userInfo])
 
   const handleCall = useCallback(() => {
     if (agentState === "disconnected" || agentState === null) {
