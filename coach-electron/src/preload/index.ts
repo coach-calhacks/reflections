@@ -12,6 +12,9 @@ import {
   OnResearchEventFn,
   ResearchEvent,
   GetTaskStatsFn,
+  StartFaceTimeCallFn,
+  GetDesktopSourcesFn,
+  OnNavigateToCallFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -22,6 +25,11 @@ if (!process.contextIsolated) {
 }
 
 try {
+  // Expose IPC send for popup window
+  contextBridge.exposeInMainWorld("ipcRenderer", {
+    send: (channel: string, data?: any) => ipcRenderer.send(channel, data),
+  });
+
   // Front end can call the function by using window.context.<Function name>
   contextBridge.exposeInMainWorld("context", {
     getVersions: (...args: Parameters<GetVersionsFn>) =>
@@ -51,6 +59,18 @@ try {
     },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
+    startFaceTimeCall: (...args: Parameters<StartFaceTimeCallFn>) =>
+      ipcRenderer.invoke("startFaceTimeCall", ...args),
+    getDesktopSources: (...args: Parameters<GetDesktopSourcesFn>) =>
+      ipcRenderer.invoke("getDesktopSources", ...args),
+    onNavigateToCall: (callback: OnNavigateToCallFn) => {
+      const subscription = () => callback();
+      ipcRenderer.on('navigate-to-call', subscription);
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('navigate-to-call', subscription);
+      };
+    },
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

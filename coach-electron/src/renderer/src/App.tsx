@@ -1,4 +1,4 @@
-import { useState, Component, ReactNode } from "react";
+import { useState, Component, ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import googleIcon from "./assets/google_icon.svg";
@@ -7,6 +7,7 @@ import { ResearchDemo } from "@/components/ResearchDemo";
 import { GLBViewer } from "@/components/GLBViewer";
 import { MCPLoadingScreen } from "@/components/MCPLoadingScreen";
 import Dashboard from "@/components/Dashboard";
+import { FaceTimeCall } from "@/components/FaceTimeCall";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -45,8 +46,17 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<"login" | "dashboard" | "research">("login");
+  const [currentPage, setCurrentPage] = useState<"login" | "dashboard" | "research" | "facetime-call">("login");
   const [setupStep, setSetupStep] = useState<SetupStep>("mcp");
+
+  // Listen for navigation events from main process
+  useEffect(() => {
+    const unsubscribe = window.context.onNavigateToCall(() => {
+      setCurrentPage("facetime-call");
+    });
+
+    return unsubscribe;
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -89,6 +99,11 @@ const App = () => {
     }
   };
 
+
+  // If on facetime-call page, show the FaceTime call interface
+  if (currentPage === "facetime-call") {
+    return <FaceTimeCall onEndCall={() => setCurrentPage("dashboard")} />;
+  }
 
   // If on dashboard page, show the combined recording dashboard
   if (currentPage === "dashboard") {

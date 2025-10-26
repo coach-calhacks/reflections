@@ -212,14 +212,14 @@
       </div>
       
       <div class="action-buttons">
-        <button class="action-button video-button" onclick="event.stopPropagation()">
+        <button class="action-button video-button" id="pickup-button" onclick="event.stopPropagation()">
           <img class="button-icon" src="./backup1.png" alt="FaceTime">
           <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <path d="m6 9 6 6 6-6"/>
           </svg>
         </button>
         
-        <button class="action-button end-button" onclick="event.stopPropagation()">
+        <button class="action-button end-button" id="end-button" onclick="event.stopPropagation()">
           <img class="button-icon" src="./backup2.png" alt="FaceTime">
           <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <path d="m6 9 6 6 6-6"/>
@@ -234,22 +234,31 @@
     // Initialize camera
     const video = document.getElementById('video');
     const loading = document.getElementById('loading');
+    let mediaStream = null;
     
     async function initCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }, 
           audio: false 
         });
-        video.srcObject = stream;
+        video.srcObject = mediaStream;
         loading.style.display = 'none';
       } catch (err) {
         console.error('Error accessing camera:', err);
         loading.textContent = 'Camera unavailable';
         // Keep the gradient background visible
+      }
+    }
+
+    // Function to stop camera stream
+    function stopCamera() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
       }
     }
 
@@ -260,6 +269,26 @@
     const userName = 'Coach';
     const avatarLetter = userName.charAt(0).toUpperCase();
     document.getElementById('avatar').textContent = avatarLetter;
+
+    // Handle pickup button click
+    document.getElementById('pickup-button').addEventListener('click', (e) => {
+      e.stopPropagation();
+      stopCamera();
+      // Send message to main process to start FaceTime call
+      if (window.ipcRenderer) {
+        window.ipcRenderer.send('popup-pickup-call');
+      }
+    });
+
+    // Handle end button click
+    document.getElementById('end-button').addEventListener('click', (e) => {
+      e.stopPropagation();
+      stopCamera();
+      // Send message to main process
+      if (window.ipcRenderer) {
+        window.ipcRenderer.send('popup-end-call');
+      }
+    });
   </script>
 </body>
 </html>

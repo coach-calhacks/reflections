@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from "electron";
+import { app, shell, BrowserWindow, ipcMain, desktopCapturer } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
@@ -25,11 +25,16 @@ import {
   SignInWithGoogleFn,
   PerformDeepResearchFn,
   GetTaskStatsFn,
+  StartFaceTimeCallFn,
+  GetDesktopSourcesFn,
+  DesktopSource,
 } from "@shared/types";
+
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -45,7 +50,11 @@ function createWindow(): void {
   });
 
   mainWindow.on("ready-to-show", () => {
-    mainWindow.show();
+    mainWindow?.show();
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -141,6 +150,39 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getTaskStats",
     (_, ...args: Parameters<GetTaskStatsFn>) => getTaskStats(...args)
+  );
+
+  // FaceTime Call IPC events
+  ipcMain.handle(
+    "startFaceTimeCall",
+    async (_, ...args: Parameters<StartFaceTimeCallFn>) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.webContents.send('navigate-to-call');
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "getDesktopSources",
+    async (_, ...args: Parameters<GetDesktopSourcesFn>): Promise<DesktopSource[]> => {
+      try {
+        const sources = await desktopCapturer.getSources({
+          types: ['window', 'screen'],
+          thumbnailSize: { width: 150, height: 150 }
+        });
+        
+        return sources.map(source => ({
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail.toDataURL()
+        }));
+      } catch (error) {
+        console.error('Error getting desktop sources:', error);
+        return [];
+      }
+    }
   );
 
   // Initialize screen capture (auto-start if previously enabled)

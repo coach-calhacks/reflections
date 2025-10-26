@@ -9,6 +9,9 @@ import {
   PerformDeepResearchFn,
   OnResearchEventFn,
   GetTaskStatsFn,
+  StartFaceTimeCallFn,
+  GetDesktopSourcesFn,
+  OnNavigateToCallFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -26,6 +29,12 @@ declare global {
       performDeepResearch: PerformDeepResearchFn;
       onResearchEvent: (callback: OnResearchEventFn) => () => void;
       getTaskStats: GetTaskStatsFn;
+      startFaceTimeCall: StartFaceTimeCallFn;
+      getDesktopSources: GetDesktopSourcesFn;
+      onNavigateToCall: (callback: OnNavigateToCallFn) => () => void;
+    };
+    ipcRenderer: {
+      send: (channel: string, data?: any) => void;
     };
   }
 }
