@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useState, useRef } from "react"
 import { useConversation } from "@elevenlabs/react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Loader2Icon, PhoneIcon, PhoneOffIcon } from "lucide-react"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Orb } from "@/components/ui/orb"
 import { ShimmeringText } from "@/components/ui/shimmering-text"
+import type { VoiceMessage, ConversationData } from "@shared/types"
 
 const DEFAULT_AGENT = {
   agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "",
@@ -33,15 +34,62 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const conversationMessages = useRef<VoiceMessage[]>([])
+  const sessionStartTime = useRef<string | null>(null)
+
+  const uploadConversation = useCallback(async () => {
+    if (conversationMessages.current.length === 0) {
+      console.log("No messages to upload")
+      return
+    }
+
+    if (!sessionStartTime.current) {
+      console.log("No session start time")
+      return
+    }
+
+    const conversationData: ConversationData = {
+      messages: conversationMessages.current,
+      sessionStartAt: sessionStartTime.current,
+      sessionEndAt: new Date().toISOString(),
+    }
+
+    try {
+      console.log("Uploading conversation with", conversationData.messages.length, "messages")
+      const result = await window.context.uploadConversation(conversationData)
+      if (result.success) {
+        console.log("Conversation uploaded successfully")
+      } else {
+        console.error("Failed to upload conversation:", result.error)
+      }
+    } catch (error) {
+      console.error("Error uploading conversation:", error)
+    }
+  }, [])
 
   const conversation = useConversation({
-    onConnect: () => console.log("Connected"),
-    onDisconnect: () => {
+    onConnect: () => {
+      console.log("Connected")
+      sessionStartTime.current = new Date().toISOString()
+      conversationMessages.current = []
+    },
+    onDisconnect: async () => {
       console.log("Disconnected")
+      // Upload conversation to Supabase
+      await uploadConversation()
       // Invoke onEnded when the call ends naturally or via button
       if (onEnded) onEnded()
     },
-    onMessage: (message) => console.log("Message:", message),
+    onMessage: (message) => {
+      console.log("Message:", message)
+      // Store the message
+      const voiceMessage: VoiceMessage = {
+        role: message.source === 'user' ? 'user' : 'assistant',
+        message: message.message || '',
+        timestamp: Date.now(),
+      }
+      conversationMessages.current.push(voiceMessage)
+    },
     onError: (error) => {
       console.error("Error:", error)
       setAgentState("disconnected")
@@ -75,19 +123,21 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
         setErrorMessage("Please enable microphone permissions in your browser.")
       }
     }
-  }, [conversation, userInfo])
+  }, [conversation, userInfo, uploadConversation])
 
-  const handleCall = useCallback(() => {
+  const handleCall = useCallback(async () => {
     if (agentState === "disconnected" || agentState === null) {
       setAgentState("connecting")
       startConversation()
     } else if (agentState === "connected") {
+      // Upload conversation before ending
+      await uploadConversation()
       conversation.endSession()
       setAgentState("disconnected")
       // Ending via button should also trigger onEnded
       if (onEnded) onEnded()
     }
-  }, [agentState, conversation, startConversation, onEnded])
+  }, [agentState, conversation, startConversation, onEnded, uploadConversation])
 
   const isCallActive = agentState === "connected"
   const isTransitioning =

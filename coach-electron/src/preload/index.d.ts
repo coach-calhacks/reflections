@@ -12,6 +12,9 @@ import {
   GetLifetimeTaskStatsFn,
   AnalyzeUserEmailsFn,
   OnEmailAnalysisProgressFn,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -33,6 +36,9 @@ declare global {
       getLifetimeTaskStats: GetLifetimeTaskStatsFn;
       analyzeUserEmails: AnalyzeUserEmailsFn;
       onEmailAnalysisProgress: (callback: OnEmailAnalysisProgressFn) => () => void;
+      uploadConversation: UploadConversationFn;
+      uploadResearchSummary: UploadResearchSummaryFn;
+      generateSystemPrompt: GenerateSystemPromptFn;
     };
   }
 }

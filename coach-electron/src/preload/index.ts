@@ -16,6 +16,9 @@ import {
   AnalyzeUserEmailsFn,
   OnEmailAnalysisProgressFn,
   EmailAnalysisProgress,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -72,6 +75,12 @@ try {
         ipcRenderer.removeListener('email-analysis-progress', subscription);
       };
     },
+    uploadConversation: (...args: Parameters<UploadConversationFn>) =>
+      ipcRenderer.invoke("uploadConversation", ...args),
+    uploadResearchSummary: (...args: Parameters<UploadResearchSummaryFn>) =>
+      ipcRenderer.invoke("uploadResearchSummary", ...args),
+    generateSystemPrompt: (...args: Parameters<GenerateSystemPromptFn>) =>
+      ipcRenderer.invoke("generateSystemPrompt", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

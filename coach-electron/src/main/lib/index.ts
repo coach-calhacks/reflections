@@ -14,6 +14,13 @@ import {
   SetScreenCaptureIntervalFn,
   GetScreenCaptureFolderFn,
   SignInWithGoogleFn,
+  ConversationData,
+  ConversationUploadResult,
+  ResearchResponse,
+  ResearchUploadResult,
+  ResearchSummary,
+  SystemPromptResult,
+  SystemPrompt,
 } from "@shared/types";
 import { signInWithGoogle as googleAuthSignIn } from "./googleAuth";
 import { showPopupWindow, isPopupOpen } from "./popupWindow";
@@ -911,6 +918,519 @@ export const analyzeUserEmails = async (services: string[]): Promise<EmailAnalys
       service: 'gmail',
     });
 
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+};
+
+// Upload conversation to Supabase
+export const uploadConversation = async (conversationData: ConversationData): Promise<ConversationUploadResult> => {
+  if (!userEmail) {
+    return {
+      success: false,
+      error: 'User not logged in. Please sign in with Google first.',
+    };
+  }
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: 'Supabase not initialized. Cannot save conversation.',
+    };
+  }
+
+  if (!genAI) {
+    return {
+      success: false,
+      error: 'Gemini AI not initialized. Cannot summarize conversation.',
+    };
+  }
+
+  try {
+    console.log('[uploadConversation] Starting conversation upload and summarization for user:', userEmail);
+
+    // Generate summary with Gemini AI
+    const conversationText = conversationData.messages
+      .map(msg => `${msg.role}: ${msg.message}`)
+      .join('\n\n');
+
+    const prompt = `Analyze this voice conversation between a user and an AI coach. Provide a comprehensive summary in JSON format with the following structure:
+{
+  "summary": "Brief overall summary of the conversation",
+  "topics_discussed": ["topic1", "topic2", "topic3"],
+  "key_insights": ["insight1", "insight2", "insight3"],
+  "user_concerns": ["concern1", "concern2"],
+  "action_items": ["action1", "action2"],
+  "sentiment": "positive/neutral/negative",
+  "conversation_quality": "high/medium/low"
+}
+
+Conversation:
+${conversationText}
+
+Return ONLY valid JSON, no other text.`;
+
+    console.log('[uploadConversation] Generating summary with Gemini...');
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: [prompt],
+    });
+
+    const responseText = result.text || '';
+    console.log('[uploadConversation] Gemini response:', responseText);
+
+    // Parse JSON from response
+    let summary: any;
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        summary = JSON.parse(jsonMatch[0]);
+      } else {
+        summary = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('[uploadConversation] Failed to parse JSON:', parseError);
+      summary = {
+        summary: responseText || 'No summary available',
+        topics_discussed: [],
+        key_insights: [],
+        user_concerns: [],
+        action_items: [],
+        sentiment: "neutral",
+        conversation_quality: "medium"
+      };
+    }
+
+    // Prepare conversation data with summary
+    const conversationToSave = {
+      messages: conversationData.messages,
+      sessionStartAt: conversationData.sessionStartAt,
+      sessionEndAt: conversationData.sessionEndAt,
+      summary: summary,
+      analyzedAt: new Date().toISOString(),
+    };
+
+    // Check if user exists
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, email, conversation')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[uploadConversation] Error checking for existing user:', fetchError);
+    }
+
+    // Append to existing conversations or create new array
+    let conversations: any[] = [];
+    if (existingUser?.conversation) {
+      // Handle both array and single object formats
+      if (Array.isArray(existingUser.conversation)) {
+        conversations = existingUser.conversation as any[];
+      } else {
+        conversations = [existingUser.conversation as any];
+      }
+    }
+    conversations.push(conversationToSave);
+
+    if (existingUser) {
+      // Update existing user
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ conversation: conversations })
+        .eq('email', userEmail);
+
+      if (updateError) {
+        console.error('[uploadConversation] Error updating user:', updateError);
+        return {
+          success: false,
+          error: `Failed to save conversation: ${updateError.message}`,
+        };
+      }
+    } else {
+      // Insert new user
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          email: userEmail,
+          conversation: conversations,
+        });
+
+      if (insertError) {
+        console.error('[uploadConversation] Error inserting user:', insertError);
+        return {
+          success: false,
+          error: `Failed to save conversation: ${insertError.message}`,
+        };
+      }
+    }
+
+    console.log('[uploadConversation] Conversation saved successfully');
+    
+    // After conversation is uploaded, generate system prompt
+    try {
+      console.log('[uploadConversation] Triggering system prompt generation...');
+      const systemPromptResult = await generateSystemPrompt();
+      if (systemPromptResult.success) {
+        console.log('[uploadConversation] System prompt generated successfully');
+      } else {
+        console.error('[uploadConversation] Failed to generate system prompt:', systemPromptResult.error);
+      }
+    } catch (systemPromptError) {
+      // Don't fail conversation upload if system prompt generation fails
+      console.error('[uploadConversation] Error generating system prompt:', systemPromptError);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[uploadConversation] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+};
+
+// Upload research summary to Supabase
+export const uploadResearchSummary = async (research: ResearchResponse): Promise<ResearchUploadResult> => {
+  if (!userEmail) {
+    return {
+      success: false,
+      error: 'User not logged in. Please sign in with Google first.',
+    };
+  }
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: 'Supabase not initialized. Cannot save research.',
+    };
+  }
+
+  if (!genAI) {
+    return {
+      success: false,
+      error: 'Gemini AI not initialized. Cannot summarize research.',
+    };
+  }
+
+  try {
+    console.log('[uploadResearchSummary] Starting research upload and summarization for user:', userEmail);
+
+    // Generate summary with Gemini AI
+    const researchContent = research.output?.content || '';
+    const instructions = research.instructions || '';
+
+    const prompt = `Analyze this research output and provide a structured summary in JSON format:
+{
+  "overview": "Brief 2-3 sentence overview of the research",
+  "keyFindings": ["finding1", "finding2", "finding3"],
+  "insights": ["insight1", "insight2", "insight3"],
+  "searchesPerformed": ${research.costDollars?.numSearches || 0},
+  "pagesAnalyzed": ${research.costDollars?.numPages || 0},
+  "timestamp": "${new Date().toISOString()}"
+}
+
+Research Question: ${instructions}
+
+Research Output:
+${researchContent.substring(0, 10000)}
+
+Return ONLY valid JSON, no other text.`;
+
+    console.log('[uploadResearchSummary] Generating summary with Gemini...');
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: [prompt],
+    });
+
+    const responseText = result.text || '';
+    console.log('[uploadResearchSummary] Gemini response:', responseText);
+
+    // Parse JSON from response
+    let summary: ResearchSummary;
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        summary = JSON.parse(jsonMatch[0]);
+      } else {
+        summary = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('[uploadResearchSummary] Failed to parse JSON:', parseError);
+      summary = {
+        overview: researchContent.substring(0, 500) || 'No overview available',
+        keyFindings: [],
+        insights: [],
+        searchesPerformed: research.costDollars?.numSearches || 0,
+        pagesAnalyzed: research.costDollars?.numPages || 0,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Prepare research data with summary
+    const researchToSave = {
+      researchId: research.researchId,
+      instructions: research.instructions,
+      summary: summary,
+      fullOutput: researchContent,
+      costDollars: research.costDollars,
+      createdAt: new Date(research.createdAt).toISOString(),
+      analyzedAt: new Date().toISOString(),
+    };
+
+    // Check if user exists
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, email, research')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[uploadResearchSummary] Error checking for existing user:', fetchError);
+    }
+
+    // Append to existing research or create new array
+    let researches: any[] = [];
+    if (existingUser?.research) {
+      // Handle both array and single object formats
+      if (Array.isArray(existingUser.research)) {
+        researches = existingUser.research as any[];
+      } else {
+        researches = [existingUser.research as any];
+      }
+    }
+    researches.push(researchToSave);
+
+    if (existingUser) {
+      // Update existing user
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ research: researches })
+        .eq('email', userEmail);
+
+      if (updateError) {
+        console.error('[uploadResearchSummary] Error updating user:', updateError);
+        return {
+          success: false,
+          error: `Failed to save research: ${updateError.message}`,
+        };
+      }
+    } else {
+      // Insert new user
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          email: userEmail,
+          research: researches,
+        });
+
+      if (insertError) {
+        console.error('[uploadResearchSummary] Error inserting user:', insertError);
+        return {
+          success: false,
+          error: `Failed to save research: ${insertError.message}`,
+        };
+      }
+    }
+
+    console.log('[uploadResearchSummary] Research saved successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[uploadResearchSummary] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+};
+
+// Generate system prompt based on user's conversation, research, and email data
+export const generateSystemPrompt = async (): Promise<SystemPromptResult> => {
+  if (!userEmail) {
+    return {
+      success: false,
+      error: 'User not logged in. Please sign in with Google first.',
+    };
+  }
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: 'Supabase not initialized. Cannot generate system prompt.',
+    };
+  }
+
+  if (!genAI) {
+    return {
+      success: false,
+      error: 'Gemini AI not initialized. Cannot generate system prompt.',
+    };
+  }
+
+  try {
+    console.log('[generateSystemPrompt] Fetching user data for:', userEmail);
+
+    // Fetch all user data from Supabase
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('conversation, research, gmail')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[generateSystemPrompt] Error fetching user data:', fetchError);
+      return {
+        success: false,
+        error: `Failed to fetch user data: ${fetchError.message}`,
+      };
+    }
+
+    if (!userData) {
+      console.log('[generateSystemPrompt] No user data found');
+      return {
+        success: false,
+        error: 'No user data found. Please complete conversations or research first.',
+      };
+    }
+
+    // Build context from all available data
+    let contextParts: string[] = [];
+
+    // Add conversation context
+    if (userData.conversation) {
+      const conversations = Array.isArray(userData.conversation) 
+        ? userData.conversation 
+        : [userData.conversation];
+      
+      contextParts.push('=== CONVERSATION HISTORY ===');
+      conversations.forEach((conv: any, idx: number) => {
+        if (conv.summary) {
+          contextParts.push(`\nConversation ${idx + 1}:`);
+          contextParts.push(JSON.stringify(conv.summary, null, 2));
+        }
+      });
+    }
+
+    // Add research context
+    if (userData.research) {
+      const researches = Array.isArray(userData.research) 
+        ? userData.research 
+        : [userData.research];
+      
+      contextParts.push('\n=== RESEARCH HISTORY ===');
+      researches.forEach((res: any, idx: number) => {
+        contextParts.push(`\nResearch ${idx + 1}:`);
+        contextParts.push(`Instructions: ${res.instructions || 'N/A'}`);
+        if (res.summary) {
+          contextParts.push(`Summary: ${JSON.stringify(res.summary, null, 2)}`);
+        }
+      });
+    }
+
+    // Add email analysis context
+    if (userData.gmail?.analysis) {
+      contextParts.push('\n=== EMAIL ANALYSIS ===');
+      contextParts.push(JSON.stringify(userData.gmail.analysis, null, 2));
+    }
+
+    const fullContext = contextParts.join('\n');
+
+    if (contextParts.length === 0) {
+      return {
+        success: false,
+        error: 'No context data available. Please complete conversations, research, or email analysis first.',
+      };
+    }
+
+    // Generate system prompt with Gemini
+    const prompt = `You are analyzing comprehensive data about a user to understand their life goals and what tasks they need to accomplish to achieve those goals.
+
+Based on the following data about the user, generate a system prompt that will be used to guide future AI interactions with this user.
+
+${fullContext}
+
+Please analyze all the above information and provide a detailed JSON response with the following structure:
+{
+  "lifeGoals": ["goal1", "goal2", "goal3"],
+  "tasksToAccomplish": ["task1", "task2", "task3"],
+  "overview": "A comprehensive 2-3 paragraph overview of the user's current situation, aspirations, and what they need to focus on",
+  "keyThemes": ["theme1", "theme2", "theme3"]
+}
+
+Be specific and actionable in identifying:
+1. The user's explicit and implicit life goals based on their conversations, research topics, and communication patterns
+2. Concrete tasks and actions they need to take to move toward those goals
+3. Key themes and patterns in their behavior and aspirations
+
+Return ONLY valid JSON, no other text.`;
+
+    console.log('[generateSystemPrompt] Generating system prompt with Gemini...');
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: [prompt],
+    });
+
+    const responseText = result.text || '';
+    console.log('[generateSystemPrompt] Gemini response:', responseText);
+
+    // Parse JSON from response
+    let systemPrompt: SystemPrompt;
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        systemPrompt = {
+          ...parsed,
+          generatedAt: new Date().toISOString(),
+        };
+      } else {
+        const parsed = JSON.parse(responseText);
+        systemPrompt = {
+          ...parsed,
+          generatedAt: new Date().toISOString(),
+        };
+      }
+    } catch (parseError) {
+      console.error('[generateSystemPrompt] Failed to parse JSON:', parseError);
+      systemPrompt = {
+        lifeGoals: ['Unable to parse specific goals from available data'],
+        tasksToAccomplish: ['Complete more conversations and research to generate specific tasks'],
+        overview: responseText || 'Unable to generate overview from available data',
+        keyThemes: [],
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Save system prompt to Supabase
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ system: systemPrompt })
+      .eq('email', userEmail);
+
+    if (updateError) {
+      console.error('[generateSystemPrompt] Error updating user:', updateError);
+      return {
+        success: false,
+        error: `Failed to save system prompt: ${updateError.message}`,
+      };
+    }
+
+    console.log('[generateSystemPrompt] System prompt saved successfully');
+    return { 
+      success: true,
+      systemPrompt: systemPrompt,
+    };
+  } catch (error) {
+    console.error('[generateSystemPrompt] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
     return {
       success: false,
       error: errorMessage,

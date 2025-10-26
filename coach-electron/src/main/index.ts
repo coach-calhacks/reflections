@@ -16,6 +16,9 @@ import {
   getTaskStats,
   getLifetimeTaskStats,
   analyzeUserEmails,
+  uploadConversation,
+  uploadResearchSummary,
+  generateSystemPrompt,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -29,6 +32,9 @@ import {
   GetTaskStatsFn,
   GetLifetimeTaskStatsFn,
   AnalyzeUserEmailsFn,
+  UploadConversationFn,
+  UploadResearchSummaryFn,
+  GenerateSystemPromptFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -157,6 +163,24 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "analyzeUserEmails",
     (_, ...args: Parameters<AnalyzeUserEmailsFn>) => analyzeUserEmails(...args)
+  );
+
+  // Conversation Upload IPC event
+  ipcMain.handle(
+    "uploadConversation",
+    (_, ...args: Parameters<UploadConversationFn>) => uploadConversation(...args)
+  );
+
+  // Research Summary Upload IPC event
+  ipcMain.handle(
+    "uploadResearchSummary",
+    (_, ...args: Parameters<UploadResearchSummaryFn>) => uploadResearchSummary(...args)
+  );
+
+  // Generate System Prompt IPC event
+  ipcMain.handle(
+    "generateSystemPrompt",
+    (_, ...args: Parameters<GenerateSystemPromptFn>) => generateSystemPrompt(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

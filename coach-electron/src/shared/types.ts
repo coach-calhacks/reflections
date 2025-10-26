@@ -240,3 +240,57 @@ export interface EmailAnalysisProgress {
 
 export type AnalyzeUserEmailsFn = (services: string[]) => Promise<EmailAnalysisResult>;
 export type OnEmailAnalysisProgressFn = (progress: EmailAnalysisProgress) => void;
+
+// Voice Chat Conversation types
+export interface VoiceMessage {
+  role: 'user' | 'assistant';
+  message: string;
+  timestamp: number;
+}
+
+export interface ConversationData {
+  messages: VoiceMessage[];
+  sessionStartAt: string;
+  sessionEndAt: string;
+}
+
+export interface ConversationUploadResult {
+  success: boolean;
+  error?: string;
+}
+
+export type UploadConversationFn = (conversation: ConversationData) => Promise<ConversationUploadResult>;
+
+// Research Summary types
+export interface ResearchSummary {
+  overview: string;
+  keyFindings: string[];
+  insights: string[];
+  searchesPerformed: number;
+  pagesAnalyzed: number;
+  timestamp: string;
+}
+
+export interface ResearchUploadResult {
+  success: boolean;
+  error?: string;
+}
+
+export type UploadResearchSummaryFn = (research: ResearchResponse) => Promise<ResearchUploadResult>;
+
+// System Prompt Generation types
+export interface SystemPrompt {
+  lifeGoals: string[];
+  tasksToAccomplish: string[];
+  overview: string;
+  keyThemes: string[];
+  generatedAt: string;
+}
+
+export interface SystemPromptResult {
+  success: boolean;
+  systemPrompt?: SystemPrompt;
+  error?: string;
+}
+
+export type GenerateSystemPromptFn = () => Promise<SystemPromptResult>;
