@@ -25,9 +25,10 @@ interface VoiceChatProps {
     name: string
     email: string
   }
+  onEnded?: () => void
 }
 
-export default function VoiceChat({ userInfo }: VoiceChatProps) {
+export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
   const displayName = userInfo?.name ? `Welcome, ${userInfo.name}` : "Customer Support"
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
@@ -35,11 +36,17 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
 
   const conversation = useConversation({
     onConnect: () => console.log("Connected"),
-    onDisconnect: () => console.log("Disconnected"),
+    onDisconnect: () => {
+      console.log("Disconnected")
+      // Invoke onEnded when the call ends naturally or via button
+      if (onEnded) onEnded()
+    },
     onMessage: (message) => console.log("Message:", message),
     onError: (error) => {
       console.error("Error:", error)
       setAgentState("disconnected")
+      // Also treat error-triggered disconnect as end
+      if (onEnded) onEnded()
     },
   })
 
@@ -77,8 +84,10 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
     } else if (agentState === "connected") {
       conversation.endSession()
       setAgentState("disconnected")
+      // Ending via button should also trigger onEnded
+      if (onEnded) onEnded()
     }
-  }, [agentState, conversation, startConversation])
+  }, [agentState, conversation, startConversation, onEnded])
 
   const isCallActive = agentState === "connected"
   const isTransitioning =

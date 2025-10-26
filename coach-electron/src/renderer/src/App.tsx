@@ -182,7 +182,13 @@ const App = () => {
         </div>
         
         <div className="w-full max-w-md">
-          <VoiceChat userInfo={userInfo} />
+          <VoiceChat 
+            userInfo={userInfo} 
+            onEnded={() => {
+              // After onboarding call ends, go to dashboard automatically
+              setCurrentPage("dashboard")
+            }}
+          />
         </div>
       </div>
     );
