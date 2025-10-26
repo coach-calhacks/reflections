@@ -217,7 +217,7 @@ const App = () => {
       </div>
       
       {/* Right side - 3D Model */}
-      <div className="flex-1 h-full bg-gray-50">
+      <div className="flex-1 h-full bg-black">
         <ErrorBoundary>
           <GLBViewer modelPath="/models/mohulpcfull.glb" className="w-full h-full" />
         </ErrorBoundary>

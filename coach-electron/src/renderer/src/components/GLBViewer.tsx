@@ -33,9 +33,65 @@ function Model({ modelPath }: ModelProps) {
     return cloned;
   }, [scene]);
   
+  // Extract geometry for point cloud
+  const pointCloudGeometry = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+    const positions: number[] = [];
+    const colors: number[] = [];
+    
+    // Sample rate: 1 = all points, 2 = every 2nd point, 3 = every 3rd point, etc.
+    const sampleRate = 5; // Reduce density by showing only every 5th point
+    
+    processedScene.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        const mesh = child as THREE.Mesh;
+        const positionAttribute = mesh.geometry.attributes.position;
+        const colorAttribute = mesh.geometry.attributes.color;
+        
+        if (positionAttribute) {
+          const matrix = mesh.matrixWorld;
+          
+          for (let i = 0; i < positionAttribute.count; i += sampleRate) {
+            const vertex = new THREE.Vector3(
+              positionAttribute.getX(i),
+              positionAttribute.getY(i),
+              positionAttribute.getZ(i)
+            );
+            vertex.applyMatrix4(matrix);
+            positions.push(vertex.x, vertex.y, vertex.z);
+            
+            // Use original colors if available, otherwise white
+            if (colorAttribute) {
+              colors.push(
+                colorAttribute.getX(i),
+                colorAttribute.getY(i),
+                colorAttribute.getZ(i)
+              );
+            } else {
+              colors.push(1, 1, 1); // White points
+            }
+          }
+        }
+      }
+    });
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    
+    return geometry;
+  }, [processedScene]);
+  
   return (
     <Center>
-      <primitive object={processedScene} />
+      <points geometry={pointCloudGeometry}>
+        <pointsMaterial
+          size={0.008}
+          transparent={true}
+          opacity={0.9}
+          vertexColors={true}
+          sizeAttenuation={true}
+        />
+      </points>
     </Center>
   );
 }
@@ -66,20 +122,22 @@ export function GLBViewer({ modelPath, className }: { modelPath: string; classNa
   }
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%' }}>
+    <div className={className} style={{ width: '100%', height: '100%', backgroundColor: '#000000' }}>
       <Canvas
         camera={{ position: [0, 0, 2.5], fov: 50 }}
         gl={{ antialias: true }}
-        style={{ width: '100%', height: '100%' }}
-        onCreated={({ gl }) => {
+        style={{ width: '100%', height: '100%', backgroundColor: '#000000' }}
+        onCreated={({ gl, scene }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1;
+          scene.background = new THREE.Color('#000000');
         }}
       >
         {/* Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+        <ambientLight intensity={1.0} />
+        <directionalLight position={[10, 10, 5]} intensity={1.5} />
+        <directionalLight position={[-10, -10, -5]} intensity={0.8} />
+        <directionalLight position={[0, -10, 0]} intensity={0.5} />
         
         <Suspense fallback={<Loader />}>
           <Model modelPath={modelPath} />
