@@ -88,7 +88,7 @@ let isAnalyzing = false; // Flag to prevent concurrent analyses
 let stopRequested = false; // Flag to abort in-flight analyses
 
 const SETTINGS_FILE = "screen-capture-settings.json";
-const SCREENSHOT_FOLDER = "ReflectionsScreenshots";
+const SCREENSHOT_FOLDER = "CoachScreenshots";
 
 // Get the screenshot save folder path
 const getScreenshotFolder = (): string => {
