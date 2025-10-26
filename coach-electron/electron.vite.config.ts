@@ -63,6 +63,7 @@ export default defineConfig({
         process.env.ELEVENLABS_AGENT_ID
       ),
     },
+    publicDir: resolve("src/renderer/public"),
     plugins: [react()],
   },
 });

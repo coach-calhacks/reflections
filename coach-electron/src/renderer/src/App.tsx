@@ -1,12 +1,44 @@
-import { useState } from "react";
+import { useState, Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import googleIcon from "./assets/google_icon.svg";
 import RecordingSettings from "@/components/RecordingSettings";
 import VoiceChat from "@/components/VoiceChat";
 import { ResearchDemo } from "@/components/ResearchDemo";
+import { GLBViewer } from "@/components/GLBViewer";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
+
+// Error boundary to catch 3D viewer errors
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("3D Viewer Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center w-full h-full bg-gray-50">
+          <p className="text-gray-400">3D viewer unavailable</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -175,9 +207,11 @@ const App = () => {
         </div>
       </div>
       
-      {/* Right side - Empty for now */}
-      <div className="flex-1 h-full">
-        {/* Content to be added later */}
+      {/* Right side - 3D Model */}
+      <div className="flex-1 h-full bg-gray-50">
+        <ErrorBoundary>
+          <GLBViewer modelPath="/models/mohulpcfull.glb" className="w-full h-full" />
+        </ErrorBoundary>
       </div>
     </div>
   );
