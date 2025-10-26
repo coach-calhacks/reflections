@@ -50,9 +50,9 @@ export default function VoiceChat({ userInfo }: VoiceChatProps) {
       
       // Hardcoded dynamic variables for ElevenLabs agent
       const dynamicVariables = {
-        "first-name": userInfo?.name || "Guest",
-        "user-background": "Student athlete with a focus on performance optimization and daily training routines. Uses the Coach app to track workouts and maintain accountability.",
-        "user-backgroundsummary": "Active user seeking guidance on training, nutrition, and performance improvement.",
+        "first-name": userInfo?.name || "Caden",
+        "user-background": "Caden is an AI Software Engineer at Notion and an undergraduate at UC Berkeley studying CS. He comes from Great Neck, a highly competitive academic environment. After high school, he explored startups with a close friend, gaining massive opportunities but also experiencing a cofounder breakup when his friend wanted to drop out. This led him to reflect on his values - realizing the journey from exploring freedom had become another rat race. He chose Berkeley to keep his opportunities open, though sometimes regrets the competitive environment. After a summer interning at Notion (working long hours with little social life) and a disappointing experience at Cluely, he's now at Berkeley feeling lost and in autopilot. He's taking all STEM classes (Math 53H, CS61A, CS61B, AI for startups) which he slightly regrets. Currently trying to find his way through reading books, working on fun projects like this Coach app, and learning to talk to new people, though that's not going the best.",
+        "user-backgroundsummary": "Berkeley CS student and Notion engineer feeling lost in autopilot mode after a cofounder breakup and intense summer. Trying to rediscover meaning through books, fun projects, and connecting with people, while navigating imposter syndrome and questioning his path.",
       }
       
       await conversation.startSession({
