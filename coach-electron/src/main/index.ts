@@ -15,6 +15,7 @@ import {
   performDeepResearch,
   getTaskStats,
   setFaceTimeCallActive,
+  getPromptConfig,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -30,6 +31,7 @@ import {
   GetDesktopSourcesFn,
   DesktopSource,
   SetFaceTimeCallActiveFn,
+  GetPromptConfigFn,
 } from "@shared/types";
 
 let mainWindow: BrowserWindow | null = null;
@@ -191,6 +193,12 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "setFaceTimeCallActive",
     (_, ...args: Parameters<SetFaceTimeCallActiveFn>) => setFaceTimeCallActive(...args)
+  );
+
+  // Get prompt configuration
+  ipcMain.handle(
+    "getPromptConfig",
+    (_, ...args: Parameters<GetPromptConfigFn>) => getPromptConfig(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

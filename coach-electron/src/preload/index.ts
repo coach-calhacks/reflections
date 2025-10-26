@@ -16,6 +16,7 @@ import {
   GetDesktopSourcesFn,
   OnNavigateToCallFn,
   SetFaceTimeCallActiveFn,
+  GetPromptConfigFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -66,6 +67,8 @@ try {
       ipcRenderer.invoke("getDesktopSources", ...args),
     setFaceTimeCallActive: (...args: Parameters<SetFaceTimeCallActiveFn>) =>
       ipcRenderer.invoke("setFaceTimeCallActive", ...args),
+    getPromptConfig: (...args: Parameters<GetPromptConfigFn>) =>
+      ipcRenderer.invoke("getPromptConfig", ...args),
     onNavigateToCall: (callback: OnNavigateToCallFn) => {
       const subscription = () => callback();
       ipcRenderer.on('navigate-to-call', subscription);

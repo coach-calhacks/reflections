@@ -594,3 +594,39 @@ export const setFaceTimeCallActive = async (isActive: boolean): Promise<void> =>
   isFaceTimeCallActive = isActive;
   console.log(`FaceTime call state updated: ${isActive ? 'active' : 'inactive'}`);
 };
+
+// Get prompt configuration from Supabase
+export const getPromptConfig = async (email: string): Promise<any> => {
+  if (!supabase) {
+    console.warn("Supabase client not initialized. Returning default config.");
+    return {
+      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  }
+
+  try {
+    // Fetch user's prompt configuration from Supabase
+    const { data, error } = await supabase
+      .from('user_prompts')
+      .select('prompt, warning_message')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      console.error("Error fetching prompt config:", error);
+      // Return default config if not found
+      return {
+        prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+      };
+    }
+
+    return data || {
+      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  } catch (error) {
+    console.error("Error fetching prompt config:", error);
+    return {
+      prompt: "You are Pickle, a friendly AI coach. Your job is to warn the user about what they should be looking for during this session. Keep your message brief and encouraging.",
+    };
+  }
+};
