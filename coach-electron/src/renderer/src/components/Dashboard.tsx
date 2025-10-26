@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, PolarRadiusAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLifetimeView, setIsLifetimeView] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Recording state
   const [captureStatus, setCaptureStatus] = useState<ScreenCaptureStatus>({
@@ -31,7 +32,6 @@ const Dashboard = () => {
     saveFolder: "",
   });
   const [intervalInput, setIntervalInput] = useState<string>("18");
-  const [statusMessage, setStatusMessage] = useState<string>("");
 
   const fetchStats = async () => {
       try {
@@ -102,7 +102,6 @@ const Dashboard = () => {
       if (captureStatus.isCapturing) {
         // Stop capture
         await window.context.stopScreenCapture();
-        setStatusMessage("Screen capture stopped");
         setCaptureStatus((prev) => ({ ...prev, isCapturing: false }));
       } else {
         // Start capture
@@ -110,19 +109,17 @@ const Dashboard = () => {
         const result = await window.context.startScreenCapture(interval);
 
         if (result.success) {
-          setStatusMessage(result.message);
           setCaptureStatus((prev) => ({
             ...prev,
             isCapturing: true,
             interval: interval
           }));
         } else {
-          setStatusMessage(`Error: ${result.message}`);
+          console.error(`Error starting capture: ${result.message}`);
         }
       }
     } catch (error) {
       console.error("Failed to toggle capture:", error);
-      setStatusMessage(`Error: ${error}`);
     }
   };
 
@@ -135,7 +132,6 @@ const Dashboard = () => {
       try {
         await window.context.setScreenCaptureInterval(interval);
         setCaptureStatus((prev) => ({ ...prev, interval }));
-        setStatusMessage(`Interval updated to ${interval} seconds`);
       } catch (error) {
         console.error("Failed to update interval:", error);
       }
@@ -169,6 +165,59 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen p-4 gap-4">
+      {/* Settings Icon - Top Right */}
+      <button
+        onClick={() => setShowSettings(true)}
+        className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        title="Settings"
+      >
+        <Settings className="w-6 h-6 text-gray-600" />
+      </button>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Settings</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Interval Setting */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Capture Interval (seconds)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={intervalInput}
+                  onChange={(e) => handleIntervalChange(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-base"
+                  disabled={captureStatus.isCapturing}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {captureStatus.isCapturing 
+                    ? "Disable capture to change interval" 
+                    : "Change interval before starting capture"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSettings(false)}
+              className="w-full mt-6 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Left Side - Radar Chart and Screen Capture Controls */}
       <div className="flex flex-col w-1/2 items-center justify-center gap-6">
         {/* Chart Mode Toggle */}
@@ -230,43 +279,19 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Screen Capture Controls */}
+        {/* Screen Capture Button - Simplified */}
         <div className="w-full max-w-md">
-          <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg border">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Status:</span>
-              <span className={`text-sm font-bold ${captureStatus.isCapturing ? 'text-green-600' : 'text-gray-500'}`}>
-                {captureStatus.isCapturing ? '● Capturing' : '○ Stopped'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Interval:</label>
-              <input
-                type="number"
-                min="1"
-                value={intervalInput}
-                onChange={(e) => handleIntervalChange(e.target.value)}
-                className="w-16 px-2 py-1 border rounded text-sm"
-                disabled={captureStatus.isCapturing}
-              />
-              <span className="text-xs text-muted-foreground">sec</span>
-            </div>
-
-            <Button
-              onClick={handleToggleCapture}
-              variant={captureStatus.isCapturing ? "destructive" : "default"}
-              size="sm"
-            >
-              {captureStatus.isCapturing ? 'Stop Capture' : 'Start Capture'}
-            </Button>
-          </div>
-
-          {statusMessage && (
-            <div className="mt-4 text-xs text-muted-foreground bg-background/50 rounded p-2 break-words text-center">
-              {statusMessage}
-            </div>
-          )}
+          <Button
+            onClick={handleToggleCapture}
+            className={`w-full text-white font-semibold py-2 px-4 rounded-lg transition-colors ${
+              captureStatus.isCapturing 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-orange-500 hover:bg-orange-600'
+            }`}
+            size="lg"
+          >
+            {captureStatus.isCapturing ? 'Stop Capture' : 'Start Capture'}
+          </Button>
         </div>
       </div>
       

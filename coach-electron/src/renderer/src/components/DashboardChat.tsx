@@ -313,6 +313,7 @@ export default function DashboardChat() {
               volumeMode="manual"
               getInputVolume={getInputVolume}
               getOutputVolume={getOutputVolume}
+              colors={["#EA8A3D", "#F59E0B"]}
             />
           </div>
           <div className="flex flex-col gap-0.5">
@@ -351,7 +352,7 @@ export default function DashboardChat() {
           <ConversationContent className="flex min-w-0 flex-col gap-2 p-6 pb-2">
             {messages.length === 0 ? (
               <ConversationEmptyState
-                icon={<Orb className="size-12" />}
+                icon={<Orb className="size-12" colors={["#EA8A3D", "#F59E0B"]} />}
                 title={
                   agentState === "connecting" ? (
                     <ShimmeringText text="Starting conversation" />
@@ -388,6 +389,7 @@ export default function DashboardChat() {
                                 ? "talking"
                                 : null
                             }
+                            colors={["#EA8A3D", "#F59E0B"]}
                           />
                         </div>
                       )}
