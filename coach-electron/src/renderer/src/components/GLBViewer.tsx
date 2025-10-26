@@ -27,8 +27,8 @@ function Model({ modelPath }: ModelProps) {
     
     console.log('After filtering, children count:', cloned.children.length);
     
-    // Scale up the model (adjust the scale value as needed - 2 means 2x larger)
-    cloned.scale.set(2, 2, 2);
+    // Scale up the model (adjust the scale value as needed - 3.5 means 3.5x larger)
+    cloned.scale.set(4, 4, 4);
     
     return cloned;
   }, [scene]);
@@ -85,7 +85,7 @@ function Model({ modelPath }: ModelProps) {
     <Center>
       <points geometry={pointCloudGeometry}>
         <pointsMaterial
-          size={0.008}
+          size={0.004}
           transparent={true}
           opacity={0.9}
           vertexColors={true}
@@ -124,7 +124,7 @@ export function GLBViewer({ modelPath, className }: { modelPath: string; classNa
   return (
     <div className={className} style={{ width: '100%', height: '100%', backgroundColor: '#000000' }}>
       <Canvas
-        camera={{ position: [0, 0, 2.5], fov: 50 }}
+        camera={{ position: [0, 0, 1.0], fov: 50 }}
         gl={{ antialias: true }}
         style={{ width: '100%', height: '100%', backgroundColor: '#000000' }}
         onCreated={({ gl, scene }) => {
