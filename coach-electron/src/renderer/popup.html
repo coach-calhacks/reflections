@@ -74,7 +74,7 @@
       top: 0;
       left: 0;
       right: 0;
-      padding: 20px;
+      padding: 14px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -137,14 +137,14 @@
     .action-buttons {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding-top: 4px;
+      gap: 6px;
+      padding-top: 2px;
     }
 
     .action-button {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
+      width: 68px;
+      height: 24px;
+      border-radius: 9999px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -160,17 +160,25 @@
     }
 
     .video-button {
-      background: #34C759;
+      background: #3ED163;
     }
 
     .end-button {
-      background: #FF3B30;
+      background: #FF383C;
     }
 
     .button-icon {
-      width: 28px;
-      height: 28px;
-      fill: white;
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .chevron-icon {
+      width: 12px;
+      height: 12px;
+      opacity: 0.8;
+      position: absolute;
+      right: 8px;
     }
 
 
@@ -205,14 +213,16 @@
       
       <div class="action-buttons">
         <button class="action-button video-button" onclick="event.stopPropagation()">
-          <svg class="button-icon" viewBox="0 0 24 24">
-            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="currentColor"/>
+          <img class="button-icon" src="./backup1.png" alt="FaceTime">
+          <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
           </svg>
         </button>
         
         <button class="action-button end-button" onclick="event.stopPropagation()">
-          <svg class="button-icon" viewBox="0 0 24 24">
-            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" fill="currentColor"/>
+          <img class="button-icon" src="./backup2.png" alt="FaceTime">
+          <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
           </svg>
         </button>
       </div>
