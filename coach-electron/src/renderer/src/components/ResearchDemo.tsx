@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Loader2, CheckCircle2, XCircle, Brain, Search, FileText, ListChecks, Lightbulb, ChevronDown } from 'lucide-react';
@@ -40,10 +40,21 @@ export function ResearchDemo({
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const hasAutoStarted = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasCompletedRef = useRef(false);
 
   // Set up event listener on mount
   useEffect(() => {
     const unsubscribe = window.context.onResearchEvent((event: ResearchEvent) => {
+      // Ignore any events that arrive after we've seen research-output
+      if (hasCompletedRef.current && event.eventType !== 'research-output') {
+        console.log('[ResearchDemo] Ignoring post-completion event:', event);
+        return;
+      }
+
+      if (event.eventType === 'research-output') {
+        hasCompletedRef.current = true;
+      }
+
       console.log('Received research event:', event);
       setEvents((prev) => [...prev, event]);
     });
@@ -78,6 +89,7 @@ export function ResearchDemo({
     setIsResearching(true);
     setEvents([]);
     setFinalResult(null);
+    hasCompletedRef.current = false;
 
     try {
       const result = await window.context.performDeepResearch({
@@ -116,10 +128,34 @@ export function ResearchDemo({
     setFinalResult(null);
   };
 
+  // Build a stable mapping of planId -> iteration number based on first appearance order
+  const planIdToIteration = useMemo(() => {
+    const map = new Map<string, number>();
+    let iterationCounter = 0;
+    for (const event of events) {
+      const planId = (event as any).planId as string | undefined;
+      if (planId && !map.has(planId)) {
+        iterationCounter += 1;
+        map.set(planId, iterationCounter);
+      }
+    }
+    return map;
+  }, [events]);
+
+  const getPlanIteration = useCallback((planId?: string) => {
+    if (!planId) return undefined;
+    return planIdToIteration.get(planId);
+  }, [planIdToIteration]);
+
   // Process events to determine which ones are currently processing
   const hasCompletionEvent = events.some(e => e.eventType === 'research-output');
-  const processedEvents: ProcessedEvent[] = events.map((event, index) => {
-    const isLast = index === events.length - 1;
+  const eventsUpToCompletion = useMemo(() => {
+    if (!hasCompletionEvent) return events;
+    const idx = events.findIndex(e => e.eventType === 'research-output');
+    return events.slice(0, idx + 1);
+  }, [events, hasCompletionEvent]);
+  const processedEvents: ProcessedEvent[] = eventsUpToCompletion.map((event, index) => {
+    const isLast = index === eventsUpToCompletion.length - 1;
     // Don't show processing animation if we already have a completion event
     const isProcessing = isResearching && isLast && event.eventType !== 'research-output' && !hasCompletionEvent;
     
@@ -162,6 +198,7 @@ export function ResearchDemo({
               event={item.event}
               isProcessing={item.isProcessing}
               timestamp={item.timestamp}
+              getPlanIteration={getPlanIteration}
             />
           ))}
           
@@ -251,6 +288,7 @@ export function ResearchDemo({
               event={item.event}
               isProcessing={item.isProcessing}
               timestamp={item.timestamp}
+              getPlanIteration={getPlanIteration}
             />
           ))}
 
@@ -287,11 +325,13 @@ export function ResearchDemo({
 function EventCarouselCard({ 
   event, 
   isProcessing, 
-  timestamp 
+  timestamp,
+  getPlanIteration,
 }: { 
   event: ResearchEvent; 
   isProcessing: boolean; 
   timestamp: string;
+  getPlanIteration: (planId?: string) => number | undefined;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -346,23 +386,40 @@ function EventCarouselCard({
       case 'research-output':
         return event.output.outputType === 'completed' ? 'Research Complete' : 'Research Failed';
       case 'plan-definition':
-        return 'Creating Research Plan';
+        {
+          const iter = getPlanIteration((event as any).planId);
+          return iter ? `Creating Research Plan (Agent ${iter})` : 'Creating Research Plan';
+        }
       case 'plan-operation':
         if (event.data.type === 'think') return 'Analyzing';
         if (event.data.type === 'search') return 'Searching Web';
         if (event.data.type === 'crawl') return 'Reading Page';
         return 'Plan Operation';
       case 'plan-output':
-        return event.output.outputType === 'tasks' ? 'Creating Tasks' : 'Planning Complete';
+        {
+          const iter = getPlanIteration((event as any).planId);
+          const suffix = iter ? ` (Agent ${iter})` : '';
+          return event.output.outputType === 'tasks' ? `Creating Tasks${suffix}` : `Planning Complete${suffix}`;
+        }
       case 'task-definition':
-        return 'Starting Task';
+        {
+          const iter = getPlanIteration((event as any).planId);
+          return iter ? `Starting Task (Agent ${iter})` : 'Starting Task';
+        }
       case 'task-operation':
-        if (event.data.type === 'think') return 'Processing';
-        if (event.data.type === 'search') return 'Searching';
-        if (event.data.type === 'crawl') return 'Analyzing Page';
-        return 'Task Operation';
+        {
+          const iter = getPlanIteration((event as any).planId);
+          const suffix = iter ? ` (Agent ${iter})` : '';
+          if (event.data.type === 'think') return `Processing${suffix}`;
+          if (event.data.type === 'search') return `Searching${suffix}`;
+          if (event.data.type === 'crawl') return `Analyzing Page${suffix}`;
+          return `Task Operation${suffix}`;
+        }
       case 'task-output':
-        return 'Task Complete';
+        {
+          const iter = getPlanIteration((event as any).planId);
+          return iter ? `Task Complete (Agent ${iter})` : 'Task Complete';
+        }
       default:
         return 'Event';
     }
