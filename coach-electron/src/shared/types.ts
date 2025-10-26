@@ -197,3 +197,30 @@ export interface TaskStats {
 }
 
 export type GetTaskStatsFn = () => Promise<TaskStats[]>;
+
+// Video Call types
+export interface CaptureWindow {
+  id: string;
+  name: string;
+  thumbnail?: string;
+}
+
+export interface VideoCallStatus {
+  isActive: boolean;
+  sourceId?: string;
+  windowName?: string;
+}
+
+export interface VideoCallResult {
+  success: boolean;
+  message?: string;
+  sourceId?: string;
+  windowName?: string;
+}
+
+export type ListCaptureWindowsFn = () => Promise<CaptureWindow[]>;
+export type StartVideoCallFn = (sourceId: string) => Promise<VideoCallResult>;
+export type EndVideoCallFn = () => Promise<void>;
+export type GetVideoCallStatusFn = () => Promise<VideoCallStatus>;
+export type FindPickleWindowsFn = () => Promise<CaptureWindow[]>;
+export type ValidateWindowFn = (sourceId: string) => Promise<{ valid: boolean; reason?: string }>;

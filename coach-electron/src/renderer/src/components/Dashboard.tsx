@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/chart";
 import type { ScreenCaptureStatus } from "@shared/types";
 import DashboardChat from "./DashboardChat";
+import VideoCall from "./VideoCall";
 
 const chartConfig = {
   value: {
@@ -151,7 +152,7 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen p-4 gap-4">
       {/* Left Side - Radar Chart and Screen Capture Controls */}
-      <div className="flex flex-col w-1/2 items-center justify-center gap-6">
+      <div className="flex flex-col w-1/3 items-center justify-center gap-6">
         {/* Radar Chart */}
         <div className="w-full max-w-md">
           {hasData ? (
@@ -219,8 +220,15 @@ const Dashboard = () => {
         </div>
       </div>
       
+      {/* Middle - Video Call */}
+      <div className="flex flex-col w-1/3 items-center justify-center px-4">
+        <div className="w-full max-w-2xl">
+          <VideoCall />
+        </div>
+      </div>
+      
       {/* Right Side - Chat */}
-      <div className="flex flex-col w-1/2 items-center justify-center px-4">
+      <div className="flex flex-col w-1/3 items-center justify-center px-4">
         <div className="w-full max-w-2xl">
           <DashboardChat />
         </div>

@@ -575,3 +575,13 @@ export const getTaskStats = async (): Promise<any[]> => {
     return [];
   }
 };
+
+// Video Capture exports
+export {
+  getAvailableWindows,
+  startWindowCapture,
+  stopWindowCapture,
+  getVideoCallStatus,
+  findPickleWindows,
+  validateWindowForCapture,
+} from './videoCapture';

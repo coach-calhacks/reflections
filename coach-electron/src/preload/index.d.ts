@@ -9,6 +9,12 @@ import {
   PerformDeepResearchFn,
   OnResearchEventFn,
   GetTaskStatsFn,
+  ListCaptureWindowsFn,
+  StartVideoCallFn,
+  EndVideoCallFn,
+  GetVideoCallStatusFn,
+  FindPickleWindowsFn,
+  ValidateWindowFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -26,6 +32,13 @@ declare global {
       performDeepResearch: PerformDeepResearchFn;
       onResearchEvent: (callback: OnResearchEventFn) => () => void;
       getTaskStats: GetTaskStatsFn;
+      // Video Call methods
+      listCaptureWindows: ListCaptureWindowsFn;
+      startVideoCall: StartVideoCallFn;
+      endVideoCall: EndVideoCallFn;
+      getVideoCallStatus: GetVideoCallStatusFn;
+      findPickleWindows: FindPickleWindowsFn;
+      validateWindow: ValidateWindowFn;
     };
   }
 }

@@ -14,6 +14,12 @@ import {
   signInWithGoogle,
   performDeepResearch,
   getTaskStats,
+  getAvailableWindows,
+  startWindowCapture,
+  stopWindowCapture,
+  getVideoCallStatus,
+  findPickleWindows,
+  validateWindowForCapture,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -25,6 +31,12 @@ import {
   SignInWithGoogleFn,
   PerformDeepResearchFn,
   GetTaskStatsFn,
+  ListCaptureWindowsFn,
+  StartVideoCallFn,
+  EndVideoCallFn,
+  GetVideoCallStatusFn,
+  FindPickleWindowsFn,
+  ValidateWindowFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -141,6 +153,53 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getTaskStats",
     (_, ...args: Parameters<GetTaskStatsFn>) => getTaskStats(...args)
+  );
+
+  // Video Call IPC events
+  ipcMain.handle(
+    "listCaptureWindows",
+    (_, ...args: Parameters<ListCaptureWindowsFn>) => getAvailableWindows(...args)
+  );
+
+  ipcMain.handle(
+    "startVideoCall",
+    async (_, sourceId: string) => {
+      try {
+        const result = await startWindowCapture(sourceId);
+        return {
+          success: true,
+          sourceId: result.sourceId,
+          windowName: result.windowName,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "endVideoCall",
+    (_, ...args: Parameters<EndVideoCallFn>) => {
+      stopWindowCapture();
+    }
+  );
+
+  ipcMain.handle(
+    "getVideoCallStatus",
+    (_, ...args: Parameters<GetVideoCallStatusFn>) => getVideoCallStatus(...args)
+  );
+
+  ipcMain.handle(
+    "findPickleWindows",
+    (_, ...args: Parameters<FindPickleWindowsFn>) => findPickleWindows(...args)
+  );
+
+  ipcMain.handle(
+    "validateWindow",
+    (_, ...args: Parameters<ValidateWindowFn>) => validateWindowForCapture(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

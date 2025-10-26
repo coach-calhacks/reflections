@@ -12,6 +12,12 @@ import {
   OnResearchEventFn,
   ResearchEvent,
   GetTaskStatsFn,
+  ListCaptureWindowsFn,
+  StartVideoCallFn,
+  EndVideoCallFn,
+  GetVideoCallStatusFn,
+  FindPickleWindowsFn,
+  ValidateWindowFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -51,6 +57,19 @@ try {
     },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
+    // Video Call methods
+    listCaptureWindows: (...args: Parameters<ListCaptureWindowsFn>) =>
+      ipcRenderer.invoke("listCaptureWindows", ...args),
+    startVideoCall: (...args: Parameters<StartVideoCallFn>) =>
+      ipcRenderer.invoke("startVideoCall", ...args),
+    endVideoCall: (...args: Parameters<EndVideoCallFn>) =>
+      ipcRenderer.invoke("endVideoCall", ...args),
+    getVideoCallStatus: (...args: Parameters<GetVideoCallStatusFn>) =>
+      ipcRenderer.invoke("getVideoCallStatus", ...args),
+    findPickleWindows: (...args: Parameters<FindPickleWindowsFn>) =>
+      ipcRenderer.invoke("findPickleWindows", ...args),
+    validateWindow: (...args: Parameters<ValidateWindowFn>) =>
+      ipcRenderer.invoke("validateWindow", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);
