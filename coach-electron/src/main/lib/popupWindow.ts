@@ -1,4 +1,4 @@
-import { BrowserWindow, screen } from "electron";
+import { BrowserWindow, screen, ipcMain } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 
@@ -86,16 +86,31 @@ export function showPopupWindow(options: PopupOptions): void {
     popupWindow = null;
     isPopupActive = false;
   });
-
-  // Allow clicking anywhere on the popup to close it
-  popupWindow.webContents.on("did-finish-load", () => {
-    popupWindow?.webContents.executeJavaScript(`
-      document.addEventListener('click', () => {
-        window.close();
-      });
-    `);
-  });
 }
+
+// Set up IPC handlers for popup actions
+ipcMain.on("popup-pickup-call", async (event) => {
+  // Close the popup window
+  if (popupWindow && !popupWindow.isDestroyed()) {
+    popupWindow.close();
+  }
+  
+  // Trigger the FaceTime call in the main window
+  const mainWindows = BrowserWindow.getAllWindows().filter(w => w !== popupWindow);
+  if (mainWindows.length > 0) {
+    const mainWindow = mainWindows[0];
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('navigate-to-call');
+  }
+});
+
+ipcMain.on("popup-end-call", () => {
+  // Just close the popup window
+  if (popupWindow && !popupWindow.isDestroyed()) {
+    popupWindow.close();
+  }
+});
 
 export function closePopupWindow(): void {
   if (popupWindow && !popupWindow.isDestroyed()) {

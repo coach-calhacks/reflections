@@ -13,7 +13,7 @@ console.log("Google OAuth Config Status:");
 console.log("  GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "✓ Loaded" : "✗ Missing");
 console.log("  GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✓ Loaded" : "✗ Missing");
 console.log("  GOOGLE_REDIRECT_URI:", process.env.GOOGLE_REDIRECT_URI || "Using default: http://localhost");
-console.log("  ELEVENLABS_AGENT_ID:", process.env.ELEVENLABS_AGENT_ID ? "✓ Loaded" : "✗ Missing");
+console.log("  ELEVENLABS_DEFAULT_AGENT_ID:", process.env.ELEVENLABS_DEFAULT_AGENT_ID ? "✓ Loaded" : "✗ Missing");
 console.log("Supabase Config Status:");
 console.log("  SUPABASE_URL:", process.env.SUPABASE_URL ? "✓ Loaded" : "✗ Missing");
 console.log("  SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "✓ Loaded" : "✗ Missing");
@@ -86,8 +86,8 @@ export default defineConfig({
       },
     },
     define: {
-      "import.meta.env.VITE_ELEVENLABS_AGENT_ID": JSON.stringify(
-        process.env.ELEVENLABS_AGENT_ID
+      "import.meta.env.VITE_ELEVENLABS_DEFAULT_AGENT_ID": JSON.stringify(
+        process.env.ELEVENLABS_DEFAULT_AGENT_ID
       ),
     },
     publicDir: resolve("src/renderer/public"),

@@ -199,6 +199,17 @@ export interface TaskStats {
 }
 
 export type GetTaskStatsFn = () => Promise<TaskStats[]>;
+
+// FaceTime Call types
+export type SetFaceTimeCallActiveFn = (isActive: boolean) => Promise<void>;
+
+// Prompt configuration types
+export interface PromptConfig {
+  prompt: string;
+  warning_message?: string;
+}
+
+export type GetPromptConfigFn = (email: string) => Promise<PromptConfig>;
 export type GetLifetimeTaskStatsFn = () => Promise<TaskStats[]>;
 
 // Email Analysis types

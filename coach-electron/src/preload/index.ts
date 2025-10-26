@@ -12,6 +12,11 @@ import {
   OnResearchEventFn,
   ResearchEvent,
   GetTaskStatsFn,
+  StartFaceTimeCallFn,
+  GetDesktopSourcesFn,
+  OnNavigateToCallFn,
+  SetFaceTimeCallActiveFn,
+  GetPromptConfigFn,
   GetLifetimeTaskStatsFn,
   AnalyzeUserEmailsFn,
   OnEmailAnalysisProgressFn,
@@ -29,6 +34,11 @@ if (!process.contextIsolated) {
 }
 
 try {
+  // Expose IPC send for popup window
+  contextBridge.exposeInMainWorld("ipcRenderer", {
+    send: (channel: string, data?: any) => ipcRenderer.send(channel, data),
+  });
+
   // Front end can call the function by using window.context.<Function name>
   contextBridge.exposeInMainWorld("context", {
     getVersions: (...args: Parameters<GetVersionsFn>) =>
@@ -63,6 +73,22 @@ try {
     },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
+    startFaceTimeCall: (...args: Parameters<StartFaceTimeCallFn>) =>
+      ipcRenderer.invoke("startFaceTimeCall", ...args),
+    getDesktopSources: (...args: Parameters<GetDesktopSourcesFn>) =>
+      ipcRenderer.invoke("getDesktopSources", ...args),
+    setFaceTimeCallActive: (...args: Parameters<SetFaceTimeCallActiveFn>) =>
+      ipcRenderer.invoke("setFaceTimeCallActive", ...args),
+    getPromptConfig: (...args: Parameters<GetPromptConfigFn>) =>
+      ipcRenderer.invoke("getPromptConfig", ...args),
+    onNavigateToCall: (callback: OnNavigateToCallFn) => {
+      const subscription = () => callback();
+      ipcRenderer.on('navigate-to-call', subscription);
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('navigate-to-call', subscription);
+      };
+    },
     getLifetimeTaskStats: (...args: Parameters<GetLifetimeTaskStatsFn>) =>
       ipcRenderer.invoke("getLifetimeTaskStats", ...args),
     analyzeUserEmails: (...args: Parameters<AnalyzeUserEmailsFn>) =>
