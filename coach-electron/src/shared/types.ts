@@ -199,3 +199,4 @@ export interface TaskStats {
 }
 
 export type GetTaskStatsFn = () => Promise<TaskStats[]>;
+export type GetLifetimeTaskStatsFn = () => Promise<TaskStats[]>;

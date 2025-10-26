@@ -12,6 +12,7 @@ import {
   OnResearchEventFn,
   ResearchEvent,
   GetTaskStatsFn,
+  GetLifetimeTaskStatsFn,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -56,6 +57,8 @@ try {
     },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
+    getLifetimeTaskStats: (...args: Parameters<GetLifetimeTaskStatsFn>) =>
+      ipcRenderer.invoke("getLifetimeTaskStats", ...args),
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

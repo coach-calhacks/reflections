@@ -14,6 +14,7 @@ import {
   signInWithGoogle,
   performDeepResearch,
   getTaskStats,
+  getLifetimeTaskStats,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -25,6 +26,7 @@ import {
   SignInWithGoogleFn,
   PerformDeepResearchFn,
   GetTaskStatsFn,
+  GetLifetimeTaskStatsFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -141,6 +143,12 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getTaskStats",
     (_, ...args: Parameters<GetTaskStatsFn>) => getTaskStats(...args)
+  );
+
+  // Lifetime Stats IPC event
+  ipcMain.handle(
+    "getLifetimeTaskStats",
+    (_, ...args: Parameters<GetLifetimeTaskStatsFn>) => getLifetimeTaskStats(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

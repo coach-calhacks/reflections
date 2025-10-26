@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<Array<{ category: string; value: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLifetimeView, setIsLifetimeView] = useState(false);
   
   // Recording state
   const [captureStatus, setCaptureStatus] = useState<ScreenCaptureStatus>({
@@ -35,7 +36,10 @@ const Dashboard = () => {
   const fetchStats = async () => {
       try {
         setIsLoading(true);
-        const stats = await window.context.getTaskStats();
+        // Fetch either lifetime or session stats based on toggle
+        const stats = isLifetimeView 
+          ? await window.context.getLifetimeTaskStats()
+          : await window.context.getTaskStats();
         console.log("[Dashboard] fetchStats called, received stats:", JSON.stringify(stats, null, 2));
         
         // Transform the data for the chart
@@ -76,7 +80,7 @@ const Dashboard = () => {
       if (unsubscribe) unsubscribe();
       clearInterval(interval);
     };
-  }, []);
+  }, [isLifetimeView]); // Add isLifetimeView to dependency array
 
   // Load recording status
   useEffect(() => {
@@ -158,14 +162,40 @@ const Dashboard = () => {
   const totalMinutes = chartData.reduce((sum, item) => sum + item.value, 0);
   const hasData = totalMinutes > 0;
 
-  // Calculate dynamic axis max for radar chart to scale properly
-  const maxValue = Math.max(...chartData.map(item => item.value), 1); // At least 1 to avoid zero scale
-  const axisMax = Math.ceil(maxValue * 1.2); // Add 20% padding for visual breathing room
+  // Calculate dynamic axis max for radar chart based on total minutes recorded
+  // This makes the scale responsive to the total duration of data
+  // For example, if only 5 seconds of data exists, the chart will scale to show that as full scale
+  const axisMax = totalMinutes > 0 ? totalMinutes * 1.2 : 1; // Add 20% padding for visual breathing room
 
   return (
     <div className="flex min-h-screen p-4 gap-4">
       {/* Left Side - Radar Chart and Screen Capture Controls */}
       <div className="flex flex-col w-1/2 items-center justify-center gap-6">
+        {/* Chart Mode Toggle */}
+        <div className="flex items-center gap-2 bg-white rounded-lg border p-3">
+          <span className="text-sm font-medium">View:</span>
+          <button
+            onClick={() => setIsLifetimeView(false)}
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+              !isLifetimeView 
+                ? 'bg-orange-500 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Session
+          </button>
+          <button
+            onClick={() => setIsLifetimeView(true)}
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+              isLifetimeView 
+                ? 'bg-orange-500 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Lifetime
+          </button>
+        </div>
+
         {/* Radar Chart */}
         <div className="w-full max-w-md flex items-center justify-center">
           {hasData ? (

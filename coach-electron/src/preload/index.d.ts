@@ -9,6 +9,7 @@ import {
   PerformDeepResearchFn,
   OnResearchEventFn,
   GetTaskStatsFn,
+  GetLifetimeTaskStatsFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -27,6 +28,7 @@ declare global {
       onResearchEvent: (callback: OnResearchEventFn) => () => void;
       getTaskStats: GetTaskStatsFn;
       onStatsUpdated: (callback: () => void) => () => void;
+      getLifetimeTaskStats: GetLifetimeTaskStatsFn;
     };
   }
 }

@@ -698,3 +698,70 @@ export const getTaskStats = async (): Promise<any[]> => {
     return [];
   }
 };
+
+// Get lifetime task statistics from Supabase (all-time data for logged-in user)
+export const getLifetimeTaskStats = async (): Promise<any[]> => {
+  if (!supabase) {
+    console.warn("Supabase client not initialized. Returning empty stats.");
+    return [];
+  }
+
+  try {
+    console.log('[getLifetimeTaskStats] Fetching all-time stats for user:', userEmail);
+
+    // Fetch all stats for the logged-in user (no session filtering)
+    const { data: rows, error } = await supabase
+      .from('stats')
+      .select('task, seconds, created_at')
+      .eq('email', userEmail)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error("Error fetching lifetime stats from Supabase:", error);
+      return [];
+    }
+
+    console.log('[getLifetimeTaskStats] Raw rows fetched:', rows?.length || 0);
+
+    if (!rows || rows.length === 0) {
+      console.warn('[getLifetimeTaskStats] No lifetime stats found. Returning empty dataset.');
+      // Return empty data structure for all categories
+      const categories = ['Analytical', 'Conversation', 'Creative', 'Reading', 'Social Media', 'Watching'];
+      return categories.map((task) => ({
+        task,
+        count: 0,
+        total_seconds: 0,
+        total_hours: 0,
+      }));
+    }
+
+    // Aggregate seconds by task
+    const byTask: Record<string, { count: number; total_seconds: number }> = {};
+    const categories = ['Analytical', 'Conversation', 'Creative', 'Reading', 'Social Media', 'Watching'];
+    
+    for (const category of categories) {
+      byTask[category] = { count: 0, total_seconds: 0 };
+    }
+
+    for (const r of rows) {
+      const task = r.task as string;
+      if (byTask[task]) {
+        byTask[task].count += 1;
+        byTask[task].total_seconds += r.seconds || 0;
+      }
+    }
+
+    const aggregated = categories.map((task) => ({
+      task,
+      count: byTask[task].count,
+      total_seconds: byTask[task].total_seconds,
+      total_hours: byTask[task].total_seconds / 3600,
+    }));
+
+    console.log('[getLifetimeTaskStats] Aggregated lifetime stats:', aggregated);
+    return aggregated;
+  } catch (error) {
+    console.error("Error fetching lifetime task stats:", error);
+    return [];
+  }
+};
