@@ -220,8 +220,8 @@ const App = () => {
       {/* Left side - Content */}
       <div className="flex-1 flex flex-col items-center justify-center gap-0 border-r border-gray-200">
         <div className="text-center mb-32">
-          <h1 className="text-3xl font-bold mb-2">Reflection</h1>
-          <p className="text-gray-600">Talk to yourself, from the future</p>
+          <h1 className="text-3xl font-bold mb-2">Reflections</h1>
+          <p className="text-gray-600">Be greater. Be yourself</p>
         </div>
         <div className="flex flex-col gap-0 items-center">
           <Button

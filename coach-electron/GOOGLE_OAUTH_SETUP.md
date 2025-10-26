@@ -19,7 +19,7 @@ You need a Google Cloud Platform account to create OAuth credentials.
    - Go to "APIs & Services" > "Credentials"
    - Click "Create Credentials" > "OAuth client ID"
    - Select "Desktop app" as the application type
-   - Give it a name (e.g., "Coach Electron App")
+   - Give it a name (e.g., "Reflections")
    - Click "Create"
 
 5. Download the credentials:
