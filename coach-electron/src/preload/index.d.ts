@@ -10,6 +10,8 @@ import {
   OnResearchEventFn,
   GetTaskStatsFn,
   GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
+  OnEmailAnalysisProgressFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -29,6 +31,8 @@ declare global {
       getTaskStats: GetTaskStatsFn;
       onStatsUpdated: (callback: () => void) => () => void;
       getLifetimeTaskStats: GetLifetimeTaskStatsFn;
+      analyzeUserEmails: AnalyzeUserEmailsFn;
+      onEmailAnalysisProgress: (callback: OnEmailAnalysisProgressFn) => () => void;
     };
   }
 }

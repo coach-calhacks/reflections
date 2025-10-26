@@ -17,6 +17,10 @@ console.log("  ELEVENLABS_AGENT_ID:", process.env.ELEVENLABS_AGENT_ID ? "✓ Loa
 console.log("Supabase Config Status:");
 console.log("  SUPABASE_URL:", process.env.SUPABASE_URL ? "✓ Loaded" : "✗ Missing");
 console.log("  SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "✓ Loaded" : "✗ Missing");
+console.log("Composio Config Status:");
+console.log("  COMPOSIO_API_KEY:", process.env.COMPOSIO_API_KEY ? "✓ Loaded" : "✗ Missing");
+console.log("  COMPOSIO_GMAIL_AUTH_CONFIG_ID:", process.env.COMPOSIO_GMAIL_AUTH_CONFIG_ID ? "✓ Loaded" : "✗ Missing");
+console.log("  OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✓ Loaded" : "✗ Missing");
 
 export default defineConfig({
   main: {
@@ -42,6 +46,15 @@ export default defineConfig({
       ),
       "process.env.SUPABASE_ANON_KEY": JSON.stringify(
         process.env.SUPABASE_ANON_KEY
+      ),
+      "process.env.COMPOSIO_API_KEY": JSON.stringify(
+        process.env.COMPOSIO_API_KEY
+      ),
+      "process.env.COMPOSIO_GMAIL_AUTH_CONFIG_ID": JSON.stringify(
+        process.env.COMPOSIO_GMAIL_AUTH_CONFIG_ID
+      ),
+      "process.env.OPENAI_API_KEY": JSON.stringify(
+        process.env.OPENAI_API_KEY
       ),
     },
   },

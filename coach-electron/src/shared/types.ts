@@ -200,3 +200,43 @@ export interface TaskStats {
 
 export type GetTaskStatsFn = () => Promise<TaskStats[]>;
 export type GetLifetimeTaskStatsFn = () => Promise<TaskStats[]>;
+
+// Email Analysis types
+export interface EmailAnalysisResult {
+  success: boolean;
+  analysis?: {
+    emailOverview: {
+      communicationStyle: 'formal' | 'informal' | 'mixed';
+      averageEmailsPerDay: number;
+      commonTopics: string[];
+      responsePattern: string;
+    };
+    jobInference: {
+      role: string;
+      industry: string;
+      seniorityLevel: 'entry' | 'mid' | 'senior' | 'executive' | 'unknown';
+      confidence: number;
+    };
+    workEnvironment: {
+      companyType: 'corporate' | 'startup' | 'freelance' | 'academic' | 'unknown';
+      teamSize: 'small' | 'medium' | 'large' | 'unknown';
+      workMode: 'remote' | 'hybrid' | 'office' | 'unknown';
+    };
+    personality: {
+      communicationStyle: string;
+      responsiveness: 'high' | 'medium' | 'low';
+      traits: string[];
+    };
+  };
+  error?: string;
+  connectedAccountId?: string;
+}
+
+export interface EmailAnalysisProgress {
+  stage: 'authenticating' | 'fetching' | 'analyzing' | 'saving' | 'complete' | 'error';
+  message: string;
+  service: string;
+}
+
+export type AnalyzeUserEmailsFn = (services: string[]) => Promise<EmailAnalysisResult>;
+export type OnEmailAnalysisProgressFn = (progress: EmailAnalysisProgress) => void;
