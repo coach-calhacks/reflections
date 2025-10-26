@@ -13,6 +13,9 @@ import {
   ResearchEvent,
   GetTaskStatsFn,
   GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
+  OnEmailAnalysisProgressFn,
+  EmailAnalysisProgress,
 } from "@shared/types";
 
 // The preload process plays a middleware role in bridging
@@ -59,6 +62,16 @@ try {
       ipcRenderer.invoke("getTaskStats", ...args),
     getLifetimeTaskStats: (...args: Parameters<GetLifetimeTaskStatsFn>) =>
       ipcRenderer.invoke("getLifetimeTaskStats", ...args),
+    analyzeUserEmails: (...args: Parameters<AnalyzeUserEmailsFn>) =>
+      ipcRenderer.invoke("analyzeUserEmails", ...args),
+    onEmailAnalysisProgress: (callback: OnEmailAnalysisProgressFn) => {
+      const subscription = (_event: any, data: EmailAnalysisProgress) => callback(data);
+      ipcRenderer.on('email-analysis-progress', subscription);
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('email-analysis-progress', subscription);
+      };
+    },
   });
 } catch (error) {
   console.error("Error occured when establishing context bridge: ", error);

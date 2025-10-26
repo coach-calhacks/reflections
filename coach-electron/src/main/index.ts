@@ -15,6 +15,7 @@ import {
   performDeepResearch,
   getTaskStats,
   getLifetimeTaskStats,
+  analyzeUserEmails,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -27,6 +28,7 @@ import {
   PerformDeepResearchFn,
   GetTaskStatsFn,
   GetLifetimeTaskStatsFn,
+  AnalyzeUserEmailsFn,
 } from "@shared/types";
 
 function createWindow(): void {
@@ -149,6 +151,12 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "getLifetimeTaskStats",
     (_, ...args: Parameters<GetLifetimeTaskStatsFn>) => getLifetimeTaskStats(...args)
+  );
+
+  // Email Analysis IPC event
+  ipcMain.handle(
+    "analyzeUserEmails",
+    (_, ...args: Parameters<AnalyzeUserEmailsFn>) => analyzeUserEmails(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

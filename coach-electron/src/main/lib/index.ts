@@ -17,6 +17,7 @@ import {
 } from "@shared/types";
 import { signInWithGoogle as googleAuthSignIn } from "./googleAuth";
 import { showPopupWindow, isPopupOpen } from "./popupWindow";
+import { performEmailAnalysis, EmailAnalysisResult, AnalysisProgress } from "./composioAnalysis";
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, "../../.env") });
@@ -763,5 +764,156 @@ export const getLifetimeTaskStats = async (): Promise<any[]> => {
   } catch (error) {
     console.error("Error fetching lifetime task stats:", error);
     return [];
+  }
+};
+
+// Helper to broadcast email analysis progress to all renderer windows
+const broadcastEmailAnalysisProgress = (progress: AnalysisProgress): void => {
+  try {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((w) => {
+      w.webContents.send('email-analysis-progress', progress);
+    });
+  } catch (error) {
+    console.warn('Failed to broadcast email analysis progress:', error);
+  }
+};
+
+// Analyze user emails with Composio and save to Supabase
+export const analyzeUserEmails = async (services: string[]): Promise<EmailAnalysisResult> => {
+  if (!userEmail) {
+    return {
+      success: false,
+      error: 'User not logged in. Please sign in with Google first.',
+    };
+  }
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: 'Supabase not initialized. Cannot save analysis results.',
+    };
+  }
+
+  // Check if Gmail is in the selected services
+  if (!services.includes('gmail')) {
+    return {
+      success: false,
+      error: 'Gmail not selected for analysis',
+    };
+  }
+
+  try {
+    console.log('[EmailAnalysis] Starting email analysis for user:', userEmail);
+
+    // Generate a unique user ID for Composio using dynamic import (nanoid is ES Module)
+    const { nanoid } = await import('nanoid');
+    const composioUserId = `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${nanoid(8)}`;
+
+    // Perform email analysis with progress updates
+    const result = await performEmailAnalysis(composioUserId, (progress) => {
+      broadcastEmailAnalysisProgress(progress);
+    });
+
+    if (!result.success || !result.analysis) {
+      broadcastEmailAnalysisProgress({
+        stage: 'error',
+        message: result.error || 'Analysis failed',
+        service: 'gmail',
+      });
+      return result;
+    }
+
+    // Save analysis to Supabase
+    broadcastEmailAnalysisProgress({
+      stage: 'saving',
+      message: 'Saving analysis results...',
+      service: 'gmail',
+    });
+
+    // Check if user exists in the database
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[EmailAnalysis] Error checking for existing user:', fetchError);
+    }
+
+    // Prepare Gmail analysis data
+    const gmailData = {
+      connectedAccountId: result.connectedAccountId,
+      analysis: result.analysis,
+      analyzedAt: new Date().toISOString(),
+    };
+
+    if (existingUser) {
+      // Update existing user
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ gmail: gmailData })
+        .eq('email', userEmail);
+
+      if (updateError) {
+        console.error('[EmailAnalysis] Error updating user:', updateError);
+        broadcastEmailAnalysisProgress({
+          stage: 'error',
+          message: 'Failed to save analysis',
+          service: 'gmail',
+        });
+        return {
+          success: false,
+          error: `Failed to save analysis: ${updateError.message}`,
+        };
+      }
+    } else {
+      // Insert new user
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          email: userEmail,
+          gmail: gmailData,
+        });
+
+      if (insertError) {
+        console.error('[EmailAnalysis] Error inserting user:', insertError);
+        broadcastEmailAnalysisProgress({
+          stage: 'error',
+          message: 'Failed to save analysis',
+          service: 'gmail',
+        });
+        return {
+          success: false,
+          error: `Failed to save analysis: ${insertError.message}`,
+        };
+      }
+    }
+
+    console.log('[EmailAnalysis] Analysis saved successfully');
+    
+    // Broadcast completion
+    broadcastEmailAnalysisProgress({
+      stage: 'complete',
+      message: 'Analysis complete!',
+      service: 'gmail',
+    });
+
+    return result;
+  } catch (error) {
+    console.error('[EmailAnalysis] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+    
+    broadcastEmailAnalysisProgress({
+      stage: 'error',
+      message: errorMessage,
+      service: 'gmail',
+    });
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 };
