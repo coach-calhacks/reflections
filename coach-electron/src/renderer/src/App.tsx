@@ -173,11 +173,11 @@ const App = () => {
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
         <div className="absolute top-4 right-4">
           <Button
-            onClick={() => setCurrentPage("research")}
+            onClick={() => setCurrentPage("dashboard")}
             variant="outline"
             size="sm"
           >
-            Research Demo
+            Dashboard
           </Button>
         </div>
         
