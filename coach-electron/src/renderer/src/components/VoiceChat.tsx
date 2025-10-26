@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react"
+import { useCallback, useState, useRef, useEffect } from "react"
 import { useConversation } from "@elevenlabs/react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Loader2Icon, PhoneIcon, PhoneOffIcon } from "lucide-react"
@@ -34,8 +34,10 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
   const displayDescription = userInfo?.email || "Tap to start voice chat"
   const [agentState, setAgentState] = useState<AgentState>("disconnected")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const conversationMessages = useRef<VoiceMessage[]>([])
   const sessionStartTime = useRef<string | null>(null)
+  const shouldUpload = useRef(false)
 
   const uploadConversation = useCallback(async () => {
     if (conversationMessages.current.length === 0) {
@@ -48,6 +50,7 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
       return
     }
 
+    setIsProcessing(true)
     const conversationData: ConversationData = {
       messages: conversationMessages.current,
       sessionStartAt: sessionStartTime.current,
@@ -64,8 +67,18 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
       }
     } catch (error) {
       console.error("Error uploading conversation:", error)
+    } finally {
+      setIsProcessing(false)
     }
   }, [])
+
+  // Handle background upload after call ends
+  useEffect(() => {
+    if (shouldUpload.current && agentState === "disconnected") {
+      shouldUpload.current = false
+      uploadConversation()
+    }
+  }, [agentState, uploadConversation])
 
   const conversation = useConversation({
     onConnect: () => {
@@ -73,10 +86,10 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
       sessionStartTime.current = new Date().toISOString()
       conversationMessages.current = []
     },
-    onDisconnect: async () => {
+    onDisconnect: () => {
       console.log("Disconnected")
-      // Upload conversation to Supabase
-      await uploadConversation()
+      // Mark for upload (will happen in useEffect)
+      shouldUpload.current = true
       // Invoke onEnded when the call ends naturally or via button
       if (onEnded) onEnded()
     },
@@ -125,19 +138,19 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
     }
   }, [conversation, userInfo, uploadConversation])
 
-  const handleCall = useCallback(async () => {
+  const handleCall = useCallback(() => {
     if (agentState === "disconnected" || agentState === null) {
       setAgentState("connecting")
       startConversation()
     } else if (agentState === "connected") {
-      // Upload conversation before ending
-      await uploadConversation()
+      // End call immediately - upload will happen in background
+      shouldUpload.current = true
       conversation.endSession()
       setAgentState("disconnected")
       // Ending via button should also trigger onEnded
       if (onEnded) onEnded()
     }
-  }, [agentState, conversation, startConversation, onEnded, uploadConversation])
+  }, [agentState, conversation, startConversation, onEnded])
 
   const isCallActive = agentState === "connected"
   const isTransitioning =
@@ -154,7 +167,25 @@ export default function VoiceChat({ userInfo, onEnded }: VoiceChatProps) {
   }, [conversation])
 
   return (
-    <Card className="flex h-[400px] w-full flex-col items-center justify-center overflow-hidden p-6">
+    <Card className="flex h-[400px] w-full flex-col items-center justify-center overflow-hidden p-6 relative">
+      {/* Processing overlay */}
+      <AnimatePresence>
+        {isProcessing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4"
+          >
+            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm font-medium">Processing conversation...</p>
+              <p className="text-xs text-muted-foreground">Analyzing and saving your chat</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col items-center gap-6">
         <div className="relative size-32">
           <div className="bg-muted relative h-full w-full rounded-full p-1 shadow-[inset_0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
