@@ -6,6 +6,7 @@ import RecordingSettings from "@/components/RecordingSettings";
 import VoiceChat from "@/components/VoiceChat";
 import { ResearchDemo } from "@/components/ResearchDemo";
 import { GLBViewer } from "@/components/GLBViewer";
+import { MCPLoadingScreen } from "@/components/MCPLoadingScreen";
 
 type SetupStep = "mcp" | "research" | "voice" | "complete";
 
@@ -127,6 +128,15 @@ const App = () => {
 
           {/* Content */}
           <div className="w-full max-w-md space-y-6 p-4">
+            {/* Show MCP loading screen during mcp step */}
+            {setupStep === "mcp" && (
+              <MCPLoadingScreen
+                onComplete={() => {
+                  setSetupStep("research");
+                }}
+              />
+            )}
+
             {/* Show research demo during research step */}
             {setupStep === "research" && (
               <div>
@@ -142,12 +152,11 @@ const App = () => {
             )}
 
             {/* Show continue button for other steps */}
-            {setupStep !== "research" && (
+            {setupStep !== "research" && setupStep !== "mcp" && (
               <div className="space-y-2">
                 <Button 
                   onClick={() => {
-                    if (setupStep === "mcp") setSetupStep("research");
-                    else if (setupStep === "voice") setSetupStep("complete");
+                    if (setupStep === "voice") setSetupStep("complete");
                   }}
                   className="w-full"
                 >
