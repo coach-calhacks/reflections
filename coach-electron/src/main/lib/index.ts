@@ -1,5 +1,5 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { desktopCapturer, systemPreferences, Notification } from "electron";
+import { desktopCapturer, systemPreferences, Notification, BrowserWindow } from "electron";
 import { app } from "electron";
 import * as fs from "fs";
 import * as path from "path";
@@ -73,8 +73,11 @@ let captureSettings = {
   isCapturing: false,
   interval: 18, // default 18 seconds
   lastCaptureTime: undefined as string | undefined,
+  sessionStartAt: undefined as string | undefined,
+  sessionEndAt: undefined as string | undefined,
 };
 let isAnalyzing = false; // Flag to prevent concurrent analyses
+let stopRequested = false; // Flag to abort in-flight analyses
 
 const SETTINGS_FILE = "screen-capture-settings.json";
 const SCREENSHOT_FOLDER = "CoachScreenshots";
@@ -202,6 +205,20 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
   }
 };
 
+// Helper to notify all renderer windows
+const broadcastStatsUpdated = (): void => {
+  try {
+    const windows = BrowserWindow.getAllWindows();
+    console.log(`[Main] broadcastStatsUpdated: notifying ${windows.length} windows`);
+    windows.forEach((w) => {
+      w.webContents.send('stats-updated');
+      console.log('[Main] sent stats-updated to a window');
+    });
+  } catch (notifyErr) {
+    console.warn('Failed to broadcast stats-updated event:', notifyErr);
+  }
+};
+
 // Analyze screenshot with Gemini AI
 const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   // Check if popup is open (user needs to respond first)
@@ -225,6 +242,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
   isAnalyzing = true;
 
   try {
+    // Check if stop was requested before starting
+    if (stopRequested) {
+      console.log('Stop requested, aborting analysis');
+      return;
+    }
+
     // Fetch most recent activity if user is logged in for Gemini context
     let previousActivityDescription: string | null = null;
     if (userEmail) {
@@ -274,6 +297,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
 
     const result = await Promise.race([geminiPromise, timeoutPromise]) as Awaited<typeof geminiPromise>;
 
+    // Check if stop was requested after Gemini completes
+    if (stopRequested) {
+      console.log('Stop requested after analysis, skipping result processing');
+      return;
+    }
+
     // Check if the model made a function call
     const functionCalls = result.functionCalls;
     
@@ -294,6 +323,11 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
         console.log(`Task category: ${task_category}`);
         
         // Insert stats into Supabase if user is logged in
+        // Re-check capturing state: if stopped while analysis was running, skip insert
+        if (!captureSettings.isCapturing || stopRequested) {
+          console.log('Capture has been stopped. Skipping stats insert for completed analysis.');
+          return;
+        }
         if (userEmail && supabase) {
           try {
             // Use atomic database function to prevent race conditions
@@ -313,6 +347,8 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
             } else if (data) {
               const result = data as { new_id: string; new_seq_time: number };
               console.log(`Stats inserted successfully - ID: ${result.new_id}, seq_time: ${result.new_seq_time}`);
+              // Notify all renderer windows that stats have been updated
+              broadcastStatsUpdated();
             }
           } catch (statsError) {
             console.error('Failed to insert stats:', statsError);
@@ -455,8 +491,14 @@ export const startScreenCapture: StartScreenCaptureFn = async (interval) => {
       };
     }
 
+    // Reset stop flag for new session
+    stopRequested = false;
+    console.log('[startScreenCapture] New session started. stopRequested reset to false.');
+
     captureSettings.interval = interval;
     captureSettings.isCapturing = true;
+    captureSettings.sessionStartAt = new Date().toISOString();
+    captureSettings.sessionEndAt = undefined;
     saveSettings();
 
     // Take first screenshot immediately
@@ -487,7 +529,31 @@ export const stopScreenCapture: StopScreenCaptureFn = async () => {
     captureInterval = null;
   }
   captureSettings.isCapturing = false;
+  stopRequested = true; // Signal any in-flight analysis to abort
+  captureSettings.sessionEndAt = new Date().toISOString();
+  console.log('[stopScreenCapture] Stop requested. isAnalyzing:', isAnalyzing, 'sessionEndAt:', captureSettings.sessionEndAt);
   saveSettings();
+  
+  // Wait for in-flight analysis to complete and abort gracefully
+  // Poll up to 5 seconds in case Gemini is still running
+  const maxWaitMs = 5000;
+  const pollInterval = 100;
+  const startTime = Date.now();
+  while (isAnalyzing && (Date.now() - startTime) < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    console.log('[stopScreenCapture] Waiting for analysis to complete... isAnalyzing:', isAnalyzing);
+  }
+  
+  if (isAnalyzing) {
+    console.warn('[stopScreenCapture] Analysis still running after 5s timeout, proceeding anyway');
+  }
+  
+  console.log('[stopScreenCapture] Analysis complete. Broadcasting stats update.');
+  // Let renderer refresh status & stats immediately
+  broadcastStatsUpdated();
+  
+  // Do NOT reset stopRequested here—keep it set until next session starts
+  // This ensures any lingering analysis won't insert stats
 };
 
 // Get current capture status
@@ -497,6 +563,8 @@ export const getScreenCaptureStatus: GetScreenCaptureStatusFn = async () => {
     interval: captureSettings.interval,
     saveFolder: getScreenshotFolder(),
     lastCaptureTime: captureSettings.lastCaptureTime,
+    sessionStartAt: captureSettings.sessionStartAt,
+    sessionEndAt: captureSettings.sessionEndAt,
   };
 };
 
@@ -560,16 +628,71 @@ export const getTaskStats = async (): Promise<any[]> => {
   }
 
   try {
-    // Use SQL aggregation to sum up seconds per task category
-    const { data, error } = await supabase.rpc('get_task_stats');
+    // Get session window bounds
+    const sinceIso = captureSettings.sessionStartAt;
+    const untilIso = captureSettings.sessionEndAt;
+    
+    console.log('[getTaskStats] Session window:', { sinceIso, untilIso });
 
+    // If we have a session start time, filter by it; otherwise return all stats
+    const query = supabase.from('stats').select('task, seconds, created_at');
+    
+    let filteredQuery = query;
+    if (sinceIso) {
+      filteredQuery = filteredQuery.gte('created_at', sinceIso);
+      console.log('[getTaskStats] Added filter: created_at >= ', sinceIso);
+    }
+    if (untilIso) {
+      filteredQuery = filteredQuery.lte('created_at', untilIso);
+      console.log('[getTaskStats] Added filter: created_at <= ', untilIso);
+    }
+
+    const { data: rows, error } = await filteredQuery.order('created_at', { ascending: true });
+    
     if (error) {
       console.error("Error fetching stats from Supabase:", error);
       return [];
     }
 
-    console.log("Task stats fetched:", data);
-    return data || [];
+    console.log('[getTaskStats] Raw rows fetched:', rows?.length || 0, rows);
+
+    if (!rows || rows.length === 0) {
+      console.warn('[getTaskStats] No stats rows found in session window. Returning empty dataset.');
+      // Return empty data structure for all categories
+      const categories = ['Analytical', 'Conversation', 'Creative', 'Reading', 'Social Media', 'Watching'];
+      return categories.map((task) => ({
+        task,
+        count: 0,
+        total_seconds: 0,
+        total_hours: 0,
+      }));
+    }
+
+    // Aggregate seconds by task
+    const byTask: Record<string, { count: number; total_seconds: number }> = {};
+    const categories = ['Analytical', 'Conversation', 'Creative', 'Reading', 'Social Media', 'Watching'];
+    
+    for (const category of categories) {
+      byTask[category] = { count: 0, total_seconds: 0 };
+    }
+
+    for (const r of rows) {
+      const task = r.task as string;
+      if (byTask[task]) {
+        byTask[task].count += 1;
+        byTask[task].total_seconds += r.seconds || 0;
+      }
+    }
+
+    const aggregated = categories.map((task) => ({
+      task,
+      count: byTask[task].count,
+      total_seconds: byTask[task].total_seconds,
+      total_hours: byTask[task].total_seconds / 3600,
+    }));
+
+    console.log('[getTaskStats] Aggregated stats:', aggregated);
+    return aggregated;
   } catch (error) {
     console.error("Error fetching task stats:", error);
     return [];

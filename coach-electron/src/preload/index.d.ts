@@ -26,6 +26,7 @@ declare global {
       performDeepResearch: PerformDeepResearchFn;
       onResearchEvent: (callback: OnResearchEventFn) => () => void;
       getTaskStats: GetTaskStatsFn;
+      onStatsUpdated: (callback: () => void) => () => void;
     };
   }
 }

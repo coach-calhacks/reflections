@@ -49,6 +49,11 @@ try {
         ipcRenderer.removeListener('research-event', subscription);
       };
     },
+    onStatsUpdated: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('stats-updated', handler);
+      return () => ipcRenderer.removeListener('stats-updated', handler);
+    },
     getTaskStats: (...args: Parameters<GetTaskStatsFn>) =>
       ipcRenderer.invoke("getTaskStats", ...args),
   });

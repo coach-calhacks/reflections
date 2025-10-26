@@ -1,4 +1,4 @@
-import { useState, Component, ReactNode } from "react";
+import { useState, Component, ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import googleIcon from "./assets/google_icon.svg";
@@ -47,6 +47,28 @@ const App = () => {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<"login" | "dashboard" | "research">("login");
   const [setupStep, setSetupStep] = useState<SetupStep>("mcp");
+
+  // Dev mode: skip to dashboard with 'S' key
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 's' || e.key === 'S') {
+        console.log('[Dev Mode] Skipping research, jumping to dashboard...');
+        setSetupStep("complete");
+        setCurrentPage("dashboard");
+        // Set a mock user if not already set
+        if (!userInfo) {
+          setUserInfo({
+            name: "Dev User",
+            email: "dev@example.com",
+            id: "dev-user-id"
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [userInfo]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);

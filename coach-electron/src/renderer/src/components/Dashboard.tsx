@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { PolarAngleAxis, PolarGrid, Radar, RadarChart } from "recharts";
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, PolarRadiusAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   ChartConfig,
@@ -32,13 +32,11 @@ const Dashboard = () => {
   const [intervalInput, setIntervalInput] = useState<string>("18");
   const [statusMessage, setStatusMessage] = useState<string>("");
 
-  useEffect(() => {
-    const fetchStats = async () => {
+  const fetchStats = async () => {
       try {
         setIsLoading(true);
         const stats = await window.context.getTaskStats();
-        
-        console.log("Received stats:", stats); // Debug log
+        console.log("[Dashboard] fetchStats called, received stats:", JSON.stringify(stats, null, 2));
         
         // Transform the data for the chart
         // Convert seconds to minutes for better visibility
@@ -46,15 +44,14 @@ const Dashboard = () => {
           category: stat.task,
           value: Math.round((stat.total_seconds / 60) * 100) / 100, // Convert to minutes with 2 decimals
         }));
+        console.log("[Dashboard] Transformed data:", JSON.stringify(transformedData, null, 2));
         
         // Custom order: Conversation first, then swap Reading and Social Media
         const customOrder = ['Conversation', 'Analytical', 'Creative', 'Social Media', 'Reading', 'Watching'];
         const reorderedData = customOrder.map(category => 
           transformedData.find((item: any) => item.category === category) || { category, value: 0 }
         );
-        
-        console.log("Reordered data:", reorderedData); // Debug log
-        
+        console.log("[Dashboard] Reordered data (for chart):", JSON.stringify(reorderedData, null, 2));
         setChartData(reorderedData);
         setError(null);
       } catch (err) {
@@ -63,9 +60,22 @@ const Dashboard = () => {
       } finally {
         setIsLoading(false);
       }
-    };
+  };
 
+  useEffect(() => {
     fetchStats();
+    // Listen for stats updates from main process after new captures are analyzed
+    console.log("[Dashboard] Setting up stats-updated listener");
+    const unsubscribe = window.context.onStatsUpdated(() => {
+      console.log("[Dashboard] stats-updated event received! Refetching stats...");
+      fetchStats();
+    });
+    // Fallback: periodic refresh every 60s in case events are missed
+    const interval = setInterval(fetchStats, 60000);
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   // Load recording status
@@ -148,30 +158,41 @@ const Dashboard = () => {
   const totalMinutes = chartData.reduce((sum, item) => sum + item.value, 0);
   const hasData = totalMinutes > 0;
 
+  // Calculate dynamic axis max for radar chart to scale properly
+  const maxValue = Math.max(...chartData.map(item => item.value), 1); // At least 1 to avoid zero scale
+  const axisMax = Math.ceil(maxValue * 1.2); // Add 20% padding for visual breathing room
+
   return (
     <div className="flex min-h-screen p-4 gap-4">
       {/* Left Side - Radar Chart and Screen Capture Controls */}
       <div className="flex flex-col w-1/2 items-center justify-center gap-6">
         {/* Radar Chart */}
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md flex items-center justify-center">
           {hasData ? (
-            <ChartContainer
-              config={chartConfig}
-              className="aspect-square max-h-[400px] w-full"
-            >
-              <RadarChart data={chartData}>
-                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                <PolarAngleAxis dataKey="category" />
-                <PolarGrid gridType="polygon" />
-                <Radar
-                  dataKey="value"
-                  fill="var(--color-value)"
-                  fillOpacity={0.6}
-                  stroke="var(--color-value)"
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ChartContainer>
+            <div className="w-96 h-96">
+              <ChartContainer
+                config={chartConfig}
+                className="w-full h-full"
+              >
+                <RadarChart
+                  data={chartData}
+                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                >
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                  <PolarAngleAxis dataKey="category" />
+                  <PolarRadiusAxis domain={[0, axisMax]} tick={false} axisLine={false} />
+                  <PolarGrid gridType="polygon" />
+                  <Radar
+                    dataKey="value"
+                    fill="var(--color-value)"
+                    fillOpacity={0.6}
+                    stroke="var(--color-value)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                </RadarChart>
+              </ChartContainer>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-[400px] text-muted-foreground text-center px-4">
               No activity data available yet. Start tracking to see your stats!

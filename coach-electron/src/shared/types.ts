@@ -7,6 +7,8 @@ export interface ScreenCaptureStatus {
   interval: number; // in seconds
   saveFolder: string;
   lastCaptureTime?: string;
+  sessionStartAt?: string;
+  sessionEndAt?: string;
 }
 
 export type StartScreenCaptureFn = (interval: number) => Promise<{ success: boolean; message: string }>;
