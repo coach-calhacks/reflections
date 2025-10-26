@@ -17,6 +17,9 @@ export const FaceTimeCall = ({ onEndCall }: FaceTimeCallProps) => {
   useEffect(() => {
     let mounted = true;
 
+    // Notify main process that FaceTime call is active
+    window.context.setFaceTimeCallActive(true);
+
     const startCall = async () => {
       try {
         // Get desktop sources from main process
@@ -114,6 +117,9 @@ export const FaceTimeCall = ({ onEndCall }: FaceTimeCallProps) => {
     return () => {
       mounted = false;
       
+      // Notify main process that FaceTime call is no longer active
+      window.context.setFaceTimeCallActive(false);
+      
       // Stop all tracks
       if (screenStream) {
         screenStream.getTracks().forEach((track) => track.stop());
@@ -125,6 +131,9 @@ export const FaceTimeCall = ({ onEndCall }: FaceTimeCallProps) => {
   }, []);
 
   const handleEndCall = () => {
+    // Notify main process that FaceTime call is no longer active
+    window.context.setFaceTimeCallActive(false);
+    
     // Stop all streams
     if (screenStream) {
       screenStream.getTracks().forEach((track) => track.stop());

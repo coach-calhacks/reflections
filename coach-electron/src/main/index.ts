@@ -14,6 +14,7 @@ import {
   signInWithGoogle,
   performDeepResearch,
   getTaskStats,
+  setFaceTimeCallActive,
 } from "@/lib";
 import {
   GetVersionsFn,
@@ -28,6 +29,7 @@ import {
   StartFaceTimeCallFn,
   GetDesktopSourcesFn,
   DesktopSource,
+  SetFaceTimeCallActiveFn,
 } from "@shared/types";
 
 let mainWindow: BrowserWindow | null = null;
@@ -183,6 +185,12 @@ app.whenReady().then(() => {
         return [];
       }
     }
+  );
+
+  // Set FaceTime call active state
+  ipcMain.handle(
+    "setFaceTimeCallActive",
+    (_, ...args: Parameters<SetFaceTimeCallActiveFn>) => setFaceTimeCallActive(...args)
   );
 
   // Initialize screen capture (auto-start if previously enabled)

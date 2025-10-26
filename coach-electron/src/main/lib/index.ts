@@ -75,6 +75,7 @@ let captureSettings = {
   lastCaptureTime: undefined as string | undefined,
 };
 let isAnalyzing = false; // Flag to prevent concurrent analyses
+let isFaceTimeCallActive = false; // Flag to track FaceTime call state
 
 const SETTINGS_FILE = "screen-capture-settings.json";
 const SCREENSHOT_FOLDER = "CoachScreenshots";
@@ -204,6 +205,12 @@ const getMostRecentActivity = async (email: string): Promise<{ description: stri
 
 // Analyze screenshot with Gemini AI
 const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
+  // Check if FaceTime call is active
+  if (isFaceTimeCallActive) {
+    console.log("FaceTime call is active, skipping screenshot analysis");
+    return;
+  }
+
   // Check if popup is open (user needs to respond first)
   if (isPopupOpen()) {
     console.log("Popup is open, skipping screenshot analysis");
@@ -355,6 +362,12 @@ const analyzeScreenshotWithGemini = async (filepath: string): Promise<void> => {
 
 // Capture a single screenshot
 const captureScreenshot = async (): Promise<void> => {
+  // Skip if FaceTime call is active
+  if (isFaceTimeCallActive) {
+    console.log("FaceTime call is active, skipping screenshot capture");
+    return;
+  }
+
   // Skip if popup is currently open (user needs to respond first)
   if (isPopupOpen()) {
     console.log("Popup is open, skipping screenshot capture");
@@ -574,4 +587,10 @@ export const getTaskStats = async (): Promise<any[]> => {
     console.error("Error fetching task stats:", error);
     return [];
   }
+};
+
+// Set FaceTime call active state
+export const setFaceTimeCallActive = async (isActive: boolean): Promise<void> => {
+  isFaceTimeCallActive = isActive;
+  console.log(`FaceTime call state updated: ${isActive ? 'active' : 'inactive'}`);
 };

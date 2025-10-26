@@ -12,6 +12,7 @@ import {
   StartFaceTimeCallFn,
   GetDesktopSourcesFn,
   OnNavigateToCallFn,
+  SetFaceTimeCallActiveFn,
 } from "@shared/types";
 
 // Type definition for the preload process
@@ -31,6 +32,7 @@ declare global {
       getTaskStats: GetTaskStatsFn;
       startFaceTimeCall: StartFaceTimeCallFn;
       getDesktopSources: GetDesktopSourcesFn;
+      setFaceTimeCallActive: SetFaceTimeCallActiveFn;
       onNavigateToCall: (callback: OnNavigateToCallFn) => () => void;
     };
     ipcRenderer: {

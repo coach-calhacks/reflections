@@ -197,3 +197,6 @@ export interface TaskStats {
 }
 
 export type GetTaskStatsFn = () => Promise<TaskStats[]>;
+
+// FaceTime Call types
+export type SetFaceTimeCallActiveFn = (isActive: boolean) => Promise<void>;
