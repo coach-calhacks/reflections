@@ -227,7 +227,7 @@ const Dashboard = () => {
             onClick={() => setIsLifetimeView(false)}
             className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
               !isLifetimeView 
-                ? 'bg-orange-500 text-white' 
+                ? 'bg-black text-white' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -237,7 +237,7 @@ const Dashboard = () => {
             onClick={() => setIsLifetimeView(true)}
             className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
               isLifetimeView 
-                ? 'bg-orange-500 text-white' 
+                ? 'bg-black text-white' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -286,7 +286,7 @@ const Dashboard = () => {
             className={`w-full text-white font-semibold py-2 px-4 rounded-lg transition-colors ${
               captureStatus.isCapturing 
                 ? 'bg-red-500 hover:bg-red-600' 
-                : 'bg-orange-500 hover:bg-orange-600'
+                : 'bg-black hover:bg-gray-800'
             }`}
             size="lg"
           >
